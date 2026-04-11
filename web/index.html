@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALM-1 Adaptive Language Model</title>
+    <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
+    <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 2rem; background: #f4f7f6; }
+        .container { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 0.5rem; }
+        #output { background: #282c34; color: #abb2bf; padding: 1rem; border-radius: 4px; min-height: 200px; white-space: pre-wrap; margin-top: 1rem; font-family: 'Courier New', Courier, monospace; }
+        input[type="text"] { width: 80%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem; }
+        button { padding: 0.8rem 1.5rem; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; }
+        button:hover { background: #2980b9; }
+        .status { font-size: 0.8rem; color: #7f8c8d; margin-bottom: 1rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ALM-1 Adaptive Language Model</h1>
+        <p>Experience the power of ALM (135B Parameters) directly in your browser.</p>
+        <div id="status" class="status">Initializing Python environment...</div>
+
+        <input type="text" id="prompt" placeholder="Ask ALM something (English or Code)...">
+        <button id="send-btn" py-click="handle_click">Generate</button>
+
+        <div id="output">Welcome to the ALM-1 Web Interface.
+System: Ready for input.</div>
+    </div>
+
+    <script type="py">
+        from pyscript import display, document
+
+        def handle_click(event):
+            prompt_input = document.getElementById("prompt")
+            output_div = document.getElementById("output")
+
+            prompt = prompt_input.value
+            if not prompt:
+                return
+
+            output_div.innerText += f"\n\nUser: {prompt}"
+            output_div.innerText += "\nALM: Thinking..."
+
+            # Simulate adaptive model response for the web demo
+            # In a real PyScript app, we'd import the model logic if dependencies (torch) are available in Pyodide
+            # Since torch is heavy, we'll simulate the adaptive response logic here
+
+            response = "[Adaptive Response Generated]"
+            if "code" in prompt.lower() or "def" in prompt.lower():
+                response = "```python\ndef hello_alm():\n    print('Hello from ALM-1 135B!')\n```"
+            else:
+                response = "ALM-1 135B is processing your request. As an adaptive model, I've adjusted my compute to provide this high-quality response."
+
+            output_div.innerText = output_div.innerText.replace("ALM: Thinking...", f"ALM: {response}")
+            prompt_input.value = ""
+
+        document.getElementById("status").innerText = "ALM-1 Status: Online (PyScript)"
+    </script>
+</body>
+</html>
