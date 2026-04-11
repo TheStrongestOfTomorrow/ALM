@@ -14,8 +14,8 @@ class ALMConfig:
 def get_alm_1_config():
     """Returns the configuration for the 135B parameter ALM-1 model."""
     return ALMConfig(
-        n_layer=80,
-        n_head=80,
+        n_layer=74,
+        n_head=96,
         n_embd=12288,  # ~135B range
         vocab_size=50257,
         block_size=2048

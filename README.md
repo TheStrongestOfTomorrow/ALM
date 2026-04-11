@@ -4,7 +4,7 @@ ALM (Adaptive Language Model) is a next-generation transformer-based architectur
 
 ## ALM-1: The Flagship Model
 
-ALM-1 is the first iteration of the ALM family, featuring **135 Billion parameters**. It is specifically optimized for:
+ALM-1 is the first iteration of the ALM family, featuring **135.35 Billion parameters**. It is specifically optimized for:
 - **English Proficiency:** Deep understanding of nuance, context, and creative expression.
 - **Coding Excellence:** State-of-the-art performance in multiple programming languages, including Python, Rust, and TypeScript.
 - **Adaptive Inference:** Dynamically adjusts compute based on task complexity.
