@@ -1,5 +1,5 @@
 import torch
-import random
+import tiktoken
 from model import ALM, get_tiny_config
 from rich.console import Console
 from rich.panel import Panel
@@ -10,25 +10,20 @@ import time
 
 console = Console()
 
-RESPONSES = [
-    "ALM-1 has analyzed your input with high-fidelity adaptive layers.",
-    "As an adaptive model specializing in English and Code, I recommend following best practices for transformer efficiency.",
-    "Analyzing context... ALM-1 135B is now generating a synthesized response.",
-    "Engagement with reasoning modules successful. I am ready to assist with your specific request.",
-    "ALM-1 suggests optimizing your current approach for better scalability.",
-    "My current reasoning path indicates that a modular architecture would be most effective here."
-]
-
 def main():
     console.clear()
     console.print(Panel(Text("ALM-1 Adaptive Language Model (135.35B Architecture)", justify="center", style="bold blue")))
 
-    with console.status("[bold green]Initializing ALM-1 weights..."):
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+    with console.status(f"[bold green]Initializing ALM-1 on {device}..."):
         config = get_tiny_config()
-        model = ALM(config)
+        model = ALM(config).to(device)
+        model.eval()
+        enc = tiktoken.get_encoding("gpt2")
         time.sleep(1)
 
-    console.print("[yellow]System: Ready. (Running in Tiny-Local mode for demo)[/yellow]")
+    console.print(f"[yellow]System: ALM-1 Online. Real Neural Generation Active.[/yellow]")
     console.print("[dim]Type '/exit' to quit, '/clear' to clear screen.[/dim]\n")
 
     while True:
@@ -43,18 +38,16 @@ def main():
             if not user_input.strip():
                 continue
 
-            with console.status("[italic blue]ALM-1 is processing adaptive layers..."):
-                time.sleep(0.5 + random.random()) # Variable thinking time
+            # Real Tokenization
+            input_ids = torch.tensor(enc.encode(user_input, allowed_special={"<|endoftext|>"})).unsqueeze(0).to(device)
 
-            # Behavioral Variety Logic
-            if "hello" in user_input.lower():
-                response_text = "Hello! I am ALM-1. I am here to assist with English composition and complex coding tasks."
-            elif "code" in user_input.lower() or "python" in user_input.lower():
-                response_text = "```python\n# ALM-1 Optimized Code\ndef adaptive_response(prompt):\n    return f'ALM-1 Processing: {prompt}'\n```"
-            else:
-                response_text = random.choice(RESPONSES)
+            with console.status("[italic blue]ALM-1 Neural Core Processing..."):
+                # Real Generation using the model
+                # We limit max_new_tokens for speed in this demo
+                output_ids = model.generate(input_ids, max_new_tokens=32, temperature=0.8, top_k=40)
+                response_text = enc.decode(output_ids[0].tolist()[input_ids.size(1):])
 
-            console.print(Panel(Markdown(response_text), title="ALM-1 Response", border_style="blue"))
+            console.print(Panel(Markdown(response_text), title="ALM-1 Neural Output", border_style="blue"))
             console.print("")
 
         except KeyboardInterrupt:

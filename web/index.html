@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ALM-1 Adaptive Language Model</title>
-    <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
-    <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
     <style>
         :root { --primary: #3498db; --bg: #0f172a; --text: #f8fafc; --panel: #1e293b; }
         body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; height: 100vh; }
@@ -16,114 +14,56 @@
         input { flex: 1; background: #0f172a; border: 1px solid #334155; color: white; padding: 0.75rem 1rem; border-radius: 8px; outline: none; }
         input:focus { border-color: var(--primary); }
         button { background: var(--primary); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer; font-weight: 600; }
-        button:hover { background: #2980b9; }
-        .mode-select { width: 100%; padding: 0.5rem; background: #0f172a; color: white; border: 1px solid #334155; border-radius: 4px; }
         .msg { margin-bottom: 1rem; padding: 0.75rem; border-radius: 8px; }
         .user-msg { background: #334155; align-self: flex-end; }
         .alm-msg { background: #1e293b; border-left: 4px solid var(--primary); }
         .badge { font-size: 0.7rem; text-transform: uppercase; background: var(--primary); padding: 2px 6px; border-radius: 4px; margin-bottom: 0.5rem; display: inline-block; }
-        code { background: #0f172a; color: #e2e8f0; padding: 0.2rem 0.4rem; border-radius: 4px; }
     </style>
 </head>
 <body>
     <div class="sidebar">
         <h2>ALM-1</h2>
-        <label>Interaction Mode</label>
-        <select id="mode" class="mode-select">
-            <option value="chat">Chat Mode</option>
-            <option value="coding">Coding Assistant</option>
-            <option value="search">Search Agent</option>
-            <option value="adaptive">Adaptive Reasoning</option>
+        <label>Mode</label>
+        <select id="mode" style="width:100%; padding:0.5rem; background:#0f172a; color:white;">
+            <option value="chat">Chat</option>
+            <option value="search">Search Agent (RAG)</option>
         </select>
-        <hr style="width: 100%; border-color: #334155;">
-        <div style="font-size: 0.8rem; color: #94a3b8;">
-            Model: ALM-1 135B<br>
-            Status: <span id="status">Connecting...</span>
-        </div>
+        <div style="font-size:0.8rem; margin-top:1rem;">Neural Engine: Active</div>
     </div>
     <div class="main">
         <div class="chat-container" id="chat">
-            <div class="msg alm-msg">
-                <span class="badge">System</span><br>
-                Welcome to ALM-1. I am an adaptive language model optimized for English and Coding. Choose a mode on the left and start chatting.
-            </div>
+            <div class="msg alm-msg"><span class="badge">SYSTEM</span><br>ALM-1 Neural Core Ready. I learn from every interaction.</div>
         </div>
         <div class="input-area">
-            <input type="text" id="prompt" placeholder="Message ALM-1...">
-            <button id="send-btn" py-click="handle_click">Send</button>
+            <input type="text" id="prompt" placeholder="Ask ALM-1...">
+            <button onclick="send()">Send</button>
         </div>
     </div>
+    <script>
+        async function send() {
+            const prompt = document.getElementById("prompt").value;
+            const mode = document.getElementById("mode").value;
+            if (!prompt) return;
 
-    <script type="py">
-        from pyscript import display, document
-        import random
+            const chat = document.getElementById("chat");
+            chat.innerHTML += `<div class="msg user-msg">You: ${prompt}</div>`;
 
-        RESPONSES = {
-            "chat": [
-                "ALM-1 has processed your query using its primary English linguistic layers.",
-                "As an adaptive model, I understand the context and am ready to assist.",
-                "Analyzing nuances in your request... I've synthesized a high-fidelity response.",
-                "ALM-1 135B is optimized for this type of conversational reasoning."
-            ],
-            "coding": [
-                "Analyzing logic path... ALM-1 recommends using an optimized transformer-based approach for this task.",
-                "Here is an efficient implementation synthesized by ALM-1: `def process_data(x): return x * 2`.",
-                "Coding layers engaged. I've adjusted my compute to provide a precise technical solution.",
-                "ALM-1 is proficient in Python, Rust, and TypeScript. How else can I assist with your codebase?"
-            ],
-            "search": [
-                "Engagement with external knowledge base successful. Found relevant data points.",
-                "ALM-1 Search Agent is scanning the indexed documentation for your query.",
-                "Retrieved context-specific information regarding the Adaptive Language Model architecture.",
-                "Data synthesis complete. Here are the most relevant findings from the 135B parameter space."
-            ],
-            "adaptive": [
-                "Dynamic compute adjustment active. Focusing 80% of parameters on reasoning tasks.",
-                "ALM-1 has switched to its high-precision adaptive reasoning mode.",
-                "Analyzing complex relationships in the prompt... Synthesis of multi-layered response in progress.",
-                "Adaptive layers stabilized. Ready for deep-dive technical or creative exploration."
-            ]
+            // Call local API (Only works when running via app.py)
+            try {
+                const res = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({prompt, mode})
+                });
+                const data = await res.json();
+                chat.innerHTML += `<div class="msg alm-msg"><span class="badge">${mode.upper()}</span><br>ALM: ${data.response}</div>`;
+            } catch (e) {
+                // Fallback for static (GitHub Pages) mode
+                chat.innerHTML += `<div class="msg alm-msg"><span class="badge">STATIC</span><br>ALM: [Running in Static Mode. Neural API only available when cloned locally.]</div>`;
+            }
+            document.getElementById("prompt").value = "";
+            chat.scrollTop = chat.scrollHeight;
         }
-
-        def handle_click(event):
-            prompt_input = document.getElementById("prompt")
-            chat_container = document.getElementById("chat")
-            mode_select = document.getElementById("mode")
-
-            prompt = prompt_input.value
-            if not prompt:
-                return
-
-            mode = mode_select.value
-
-            # Add User Message
-            user_div = document.createElement("div")
-            user_div.className = "msg user-msg"
-            user_div.innerText = f"You: {prompt}"
-            chat_container.appendChild(user_div)
-
-            # Add ALM Thinking Placeholder
-            alm_div = document.createElement("div")
-            alm_div.className = "msg alm-msg"
-            alm_div.innerHTML = f"<span class='badge'>{mode.upper()}</span><br>ALM: Thinking..."
-            chat_container.appendChild(alm_div)
-            chat_container.scrollTop = chat_container.scrollHeight
-
-            # Diverse Response Logic
-            options = RESPONSES.get(mode, RESPONSES["chat"])
-            response = random.choice(options)
-
-            # Keyword specific override
-            if "hello" in prompt.lower():
-                response = "Greetings! I am ALM-1, your adaptive language assistant. How can I help you today?"
-            elif "who are you" in prompt.lower():
-                response = "I am ALM-1, a 135.35 Billion parameter Adaptive Language Model specializing in English and Code."
-
-            alm_div.innerHTML = f"<span class='badge'>{mode.upper()}</span><br>ALM: {response}"
-            prompt_input.value = ""
-            chat_container.scrollTop = chat_container.scrollHeight
-
-        document.getElementById("status").innerText = "Online"
     </script>
 </body>
 </html>
