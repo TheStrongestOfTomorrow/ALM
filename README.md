@@ -12,32 +12,31 @@ ALM-1 is the first iteration of the ALM family, featuring **135.35 Billion param
 ### Specifications
 | Feature | Value |
 | --- | --- |
-| Parameters | 135B |
+| Parameters | 135.35B |
 | Architecture | Adaptive Transformer |
 | Training Focus | English & Code |
 | License | MIT |
 
-## Getting Started
+## Quick Start
 
-### Installation
-ALM requires Python 3.8+ and the `torch` library.
-
-```bash
-pip install torch
-```
-
-### Usage (CLI)
-You can interact with ALM via the command line interface:
+If you clone the repository, you can run the central entry point to choose your interface:
 
 ```bash
-python cli.py
+pip install torch flask rich
+python app.py
 ```
 
-## Web Interface
-ALM comes with a built-in web interface powered by PyScript, allowing you to run a lightweight version of the model directly in your browser. This is hosted via GitHub Pages.
+### Modes Available:
+1.  **Web Mode:** Launches a local Flask server with a professional chat interface, including search and coding modes.
+2.  **Terminal Mode:** Launches a beautiful TUI (Terminal User Interface) with rich formatting and markdown support.
+
+## Web Interface (Hosted)
+A static version of the ALM-1 interface is hosted via GitHub Pages using PyScript. This allows you to test the model's logic directly in your browser without any installation.
+
+**[Link to GitHub Pages Interface]**
 
 ## GitHub Pages Hosting
-This repository is configured to auto-host the web interface. Every push to the main branch triggers a deployment to GitHub Pages.
+This repository is configured to auto-deploy the web interface. Every push to the repository triggers a deployment.
 
 ---
 *Created by Jules, Software Engineer.*
