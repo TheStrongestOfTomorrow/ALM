@@ -22,6 +22,7 @@
         .user-msg { background: #334155; align-self: flex-end; }
         .alm-msg { background: #1e293b; border-left: 4px solid var(--primary); }
         .badge { font-size: 0.7rem; text-transform: uppercase; background: var(--primary); padding: 2px 6px; border-radius: 4px; margin-bottom: 0.5rem; display: inline-block; }
+        code { background: #0f172a; color: #e2e8f0; padding: 0.2rem 0.4rem; border-radius: 4px; }
     </style>
 </head>
 <body>
@@ -55,6 +56,34 @@
 
     <script type="py">
         from pyscript import display, document
+        import random
+
+        RESPONSES = {
+            "chat": [
+                "ALM-1 has processed your query using its primary English linguistic layers.",
+                "As an adaptive model, I understand the context and am ready to assist.",
+                "Analyzing nuances in your request... I've synthesized a high-fidelity response.",
+                "ALM-1 135B is optimized for this type of conversational reasoning."
+            ],
+            "coding": [
+                "Analyzing logic path... ALM-1 recommends using an optimized transformer-based approach for this task.",
+                "Here is an efficient implementation synthesized by ALM-1: `def process_data(x): return x * 2`.",
+                "Coding layers engaged. I've adjusted my compute to provide a precise technical solution.",
+                "ALM-1 is proficient in Python, Rust, and TypeScript. How else can I assist with your codebase?"
+            ],
+            "search": [
+                "Engagement with external knowledge base successful. Found relevant data points.",
+                "ALM-1 Search Agent is scanning the indexed documentation for your query.",
+                "Retrieved context-specific information regarding the Adaptive Language Model architecture.",
+                "Data synthesis complete. Here are the most relevant findings from the 135B parameter space."
+            ],
+            "adaptive": [
+                "Dynamic compute adjustment active. Focusing 80% of parameters on reasoning tasks.",
+                "ALM-1 has switched to its high-precision adaptive reasoning mode.",
+                "Analyzing complex relationships in the prompt... Synthesis of multi-layered response in progress.",
+                "Adaptive layers stabilized. Ready for deep-dive technical or creative exploration."
+            ]
+        }
 
         def handle_click(event):
             prompt_input = document.getElementById("prompt")
@@ -80,14 +109,15 @@
             chat_container.appendChild(alm_div)
             chat_container.scrollTop = chat_container.scrollHeight
 
-            # Simulated Response Logic
-            response = ""
-            if mode == "coding":
-                response = "Processing code request... ALM-1 has generated an optimized solution for your coding task."
-            elif mode == "search":
-                response = f"Searching ALM-1 knowledge base for: '{prompt}'... Found relevant data on English nuances and system architecture."
-            else:
-                response = "ALM-1 135B is using adaptive compute to process your natural language request. I am ready to assist with English composition or complex reasoning."
+            # Diverse Response Logic
+            options = RESPONSES.get(mode, RESPONSES["chat"])
+            response = random.choice(options)
+
+            # Keyword specific override
+            if "hello" in prompt.lower():
+                response = "Greetings! I am ALM-1, your adaptive language assistant. How can I help you today?"
+            elif "who are you" in prompt.lower():
+                response = "I am ALM-1, a 135.35 Billion parameter Adaptive Language Model specializing in English and Code."
 
             alm_div.innerHTML = f"<span class='badge'>{mode.upper()}</span><br>ALM: {response}"
             prompt_input.value = ""

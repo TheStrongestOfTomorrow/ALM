@@ -16,7 +16,7 @@ def get_alm_1_config():
     return ALMConfig(
         n_layer=74,
         n_head=96,
-        n_embd=12288,  # ~135B range
+        n_embd=12288,
         vocab_size=50257,
         block_size=2048
     )
@@ -111,24 +111,29 @@ class ALM(nn.Module):
         return logits
 
     @torch.no_grad()
-    def generate(self, idx, max_new_tokens, temperature=1.0):
+    def generate(self, idx, max_new_tokens, temperature=1.0, top_k=None):
+        """
+        Generates tokens from the model.
+        Added top_k sampling to prevent repetitive/low-probability outputs.
+        """
         for _ in range(max_new_tokens):
             idx_cond = idx if idx.size(1) <= self.config.block_size else idx[:, -self.config.block_size:]
             logits = self(idx_cond)
             logits = logits[:, -1, :] / temperature
+
+            if top_k is not None:
+                v, _ = torch.topk(logits, min(top_k, logits.size(-1)))
+                logits[logits < v[:, [-1]]] = -float('Inf')
+
             probs = F.softmax(logits, dim=-1)
             idx_next = torch.multinomial(probs, num_samples=1)
             idx = torch.cat((idx, idx_next), dim=1)
         return idx
 
 if __name__ == "__main__":
-    # Test with Tiny config
     config = get_tiny_config()
     model = ALM(config)
     print(f"Tiny Model Parameters: {sum(p.numel() for p in model.parameters())/1e6:.2f}M")
 
-    # ALM-1 135B Check (Don't instantiate, just calculate)
     alm1_config = get_alm_1_config()
-    # Params roughly: layers * (12 * n_embd^2 + vocab * n_embd)
-    # Actually let's just show the config
     print(f"ALM-1 135B Config: Layers={alm1_config.n_layer}, Embd={alm1_config.n_embd}, Heads={alm1_config.n_head}")
