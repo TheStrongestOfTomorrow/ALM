@@ -7,27 +7,50 @@
     <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
     <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 2rem; background: #f4f7f6; }
-        .container { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 0.5rem; }
-        #output { background: #282c34; color: #abb2bf; padding: 1rem; border-radius: 4px; min-height: 200px; white-space: pre-wrap; margin-top: 1rem; font-family: 'Courier New', Courier, monospace; }
-        input[type="text"] { width: 80%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem; }
-        button { padding: 0.8rem 1.5rem; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; }
+        :root { --primary: #3498db; --bg: #0f172a; --text: #f8fafc; --panel: #1e293b; }
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; height: 100vh; }
+        .sidebar { width: 260px; background: #020617; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
+        .main { flex: 1; display: flex; flex-direction: column; padding: 2rem; position: relative; }
+        .chat-container { flex: 1; overflow-y: auto; background: var(--panel); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; border: 1px solid #334155; }
+        .input-area { display: flex; gap: 0.75rem; }
+        input { flex: 1; background: #0f172a; border: 1px solid #334155; color: white; padding: 0.75rem 1rem; border-radius: 8px; outline: none; }
+        input:focus { border-color: var(--primary); }
+        button { background: var(--primary); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer; font-weight: 600; }
         button:hover { background: #2980b9; }
-        .status { font-size: 0.8rem; color: #7f8c8d; margin-bottom: 1rem; }
+        .mode-select { width: 100%; padding: 0.5rem; background: #0f172a; color: white; border: 1px solid #334155; border-radius: 4px; }
+        .msg { margin-bottom: 1rem; padding: 0.75rem; border-radius: 8px; }
+        .user-msg { background: #334155; align-self: flex-end; }
+        .alm-msg { background: #1e293b; border-left: 4px solid var(--primary); }
+        .badge { font-size: 0.7rem; text-transform: uppercase; background: var(--primary); padding: 2px 6px; border-radius: 4px; margin-bottom: 0.5rem; display: inline-block; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>ALM-1 Adaptive Language Model</h1>
-        <p>Experience the power of ALM (135B Parameters) directly in your browser.</p>
-        <div id="status" class="status">Initializing Python environment...</div>
-
-        <input type="text" id="prompt" placeholder="Ask ALM something (English or Code)...">
-        <button id="send-btn" py-click="handle_click">Generate</button>
-
-        <div id="output">Welcome to the ALM-1 Web Interface.
-System: Ready for input.</div>
+    <div class="sidebar">
+        <h2>ALM-1</h2>
+        <label>Interaction Mode</label>
+        <select id="mode" class="mode-select">
+            <option value="chat">Chat Mode</option>
+            <option value="coding">Coding Assistant</option>
+            <option value="search">Search Agent</option>
+            <option value="adaptive">Adaptive Reasoning</option>
+        </select>
+        <hr style="width: 100%; border-color: #334155;">
+        <div style="font-size: 0.8rem; color: #94a3b8;">
+            Model: ALM-1 135B<br>
+            Status: <span id="status">Connecting...</span>
+        </div>
+    </div>
+    <div class="main">
+        <div class="chat-container" id="chat">
+            <div class="msg alm-msg">
+                <span class="badge">System</span><br>
+                Welcome to ALM-1. I am an adaptive language model optimized for English and Coding. Choose a mode on the left and start chatting.
+            </div>
+        </div>
+        <div class="input-area">
+            <input type="text" id="prompt" placeholder="Message ALM-1...">
+            <button id="send-btn" py-click="handle_click">Send</button>
+        </div>
     </div>
 
     <script type="py">
@@ -35,29 +58,42 @@ System: Ready for input.</div>
 
         def handle_click(event):
             prompt_input = document.getElementById("prompt")
-            output_div = document.getElementById("output")
+            chat_container = document.getElementById("chat")
+            mode_select = document.getElementById("mode")
 
             prompt = prompt_input.value
             if not prompt:
                 return
 
-            output_div.innerText += f"\n\nUser: {prompt}"
-            output_div.innerText += "\nALM: Thinking..."
+            mode = mode_select.value
 
-            # Simulate adaptive model response for the web demo
-            # In a real PyScript app, we'd import the model logic if dependencies (torch) are available in Pyodide
-            # Since torch is heavy, we'll simulate the adaptive response logic here
+            # Add User Message
+            user_div = document.createElement("div")
+            user_div.className = "msg user-msg"
+            user_div.innerText = f"You: {prompt}"
+            chat_container.appendChild(user_div)
 
-            response = "[Adaptive Response Generated]"
-            if "code" in prompt.lower() or "def" in prompt.lower():
-                response = "```python\ndef hello_alm():\n    print('Hello from ALM-1 135B!')\n```"
+            # Add ALM Thinking Placeholder
+            alm_div = document.createElement("div")
+            alm_div.className = "msg alm-msg"
+            alm_div.innerHTML = f"<span class='badge'>{mode.upper()}</span><br>ALM: Thinking..."
+            chat_container.appendChild(alm_div)
+            chat_container.scrollTop = chat_container.scrollHeight
+
+            # Simulated Response Logic
+            response = ""
+            if mode == "coding":
+                response = "Processing code request... ALM-1 has generated an optimized solution for your coding task."
+            elif mode == "search":
+                response = f"Searching ALM-1 knowledge base for: '{prompt}'... Found relevant data on English nuances and system architecture."
             else:
-                response = "ALM-1 135B is processing your request. As an adaptive model, I've adjusted my compute to provide this high-quality response."
+                response = "ALM-1 135B is using adaptive compute to process your natural language request. I am ready to assist with English composition or complex reasoning."
 
-            output_div.innerText = output_div.innerText.replace("ALM: Thinking...", f"ALM: {response}")
+            alm_div.innerHTML = f"<span class='badge'>{mode.upper()}</span><br>ALM: {response}"
             prompt_input.value = ""
+            chat_container.scrollTop = chat_container.scrollHeight
 
-        document.getElementById("status").innerText = "ALM-1 Status: Online (PyScript)"
+        document.getElementById("status").innerText = "Online"
     </script>
 </body>
 </html>
