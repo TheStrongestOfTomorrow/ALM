@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ALM-1-Coder</title>
+<style>
+/* ===== CSS Reset & Variables ===== */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg-primary:#0f0f1a;
+  --bg-secondary:#1a1a2e;
+  --bg-tertiary:#16213e;
+  --bg-hover:#252542;
+  --bg-active:#2d2d52;
+  --bg-message:#1e1e36;
+  --bg-user:#2a1a4e;
+  --text-primary:#e8e8f0;
+  --text-secondary:#a0a0c0;
+  --text-muted:#6a6a8e;
+  --accent:#7c3aed;
+  --accent-light:#a78bfa;
+  --accent-dark:#5b21b6;
+  --accent-glow:rgba(124,58,237,0.3);
+  --border:#2a2a4a;
+  --border-light:#3a3a5a;
+  --success:#10b981;
+  --warning:#f59e0b;
+  --error:#ef4444;
+  --info:#3b82f6;
+  --radius:12px;
+  --radius-sm:8px;
+  --radius-xs:4px;
+  --shadow:0 4px 24px rgba(0,0,0,0.4);
+  --transition:0.2s ease;
+  --sidebar-width:300px;
+  --font-mono:'SF Mono',SFMono-Regular,Consolas,'Liberation Mono',Menlo,monospace;
+  --font-sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+}
+html,body{height:100%;overflow:hidden}
+body{font-family:var(--font-sans);background:var(--bg-primary);color:var(--text-primary);line-height:1.6}
+a{color:var(--accent-light);text-decoration:none}
+button{cursor:pointer;font-family:inherit;border:none;background:none;color:inherit;font-size:inherit}
+input,textarea,select{font-family:inherit;font-size:inherit;color:var(--text-primary);background:var(--bg-tertiary);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;outline:none;transition:border-color var(--transition)}
+input:focus,textarea:focus,select:focus{border-color:var(--accent)}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border-light);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--text-muted)}
+
+/* ===== Loading Screen ===== */
+#loading-screen{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg-primary)}
+#loading-screen .logo{font-size:48px;font-weight:800;background:linear-gradient(135deg,var(--accent-light),var(--accent),#c084fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
+#loading-screen .subtitle{color:var(--text-secondary);font-size:14px;margin-bottom:32px}
+#loading-screen .progress-container{width:320px;height:6px;background:var(--bg-tertiary);border-radius:3px;overflow:hidden;margin-bottom:16px}
+#loading-screen .progress-bar{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-light));border-radius:3px;transition:width 0.3s ease;width:0%}
+#loading-screen .status{color:var(--text-muted);font-size:13px;text-align:center;min-height:20px}
+#loading-screen.hidden{opacity:0;pointer-events:none;transition:opacity 0.5s ease}
+
+/* ===== App Layout ===== */
+#app{display:flex;height:100vh;overflow:hidden}
+
+/* ===== Sidebar ===== */
+#sidebar{width:var(--sidebar-width);min-width:var(--sidebar-width);background:var(--bg-secondary);border-right:1px solid var(--border);display:flex;flex-direction:column;transition:transform 0.3s ease;z-index:100}
+#sidebar.collapsed{transform:translateX(-100%);min-width:0;width:0;overflow:hidden}
+.sidebar-header{padding:16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.sidebar-header h2{font-size:16px;font-weight:700;flex:1;background:linear-gradient(135deg,var(--accent-light),#c084fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.btn-new-chat{display:flex;align-items:center;gap:6px;padding:8px 14px;background:var(--accent);color:#fff;border-radius:var(--radius-sm);font-weight:600;font-size:13px;transition:background var(--transition)}
+.btn-new-chat:hover{background:var(--accent-dark)}
+.sidebar-search{padding:12px 16px;border-bottom:1px solid var(--border)}
+.sidebar-search input{width:100%;padding:8px 12px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px}
+.sidebar-search input::placeholder{color:var(--text-muted)}
+#chat-list{flex:1;overflow-y:auto;padding:8px}
+.chat-item{padding:10px 14px;border-radius:var(--radius-sm);cursor:pointer;display:flex;align-items:center;gap:8px;margin-bottom:2px;transition:background var(--transition);font-size:13px}
+.chat-item:hover{background:var(--bg-hover)}
+.chat-item.active{background:var(--bg-active);border-left:2px solid var(--accent)}
+.chat-item .chat-title{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chat-item .chat-delete{opacity:0;color:var(--text-muted);transition:opacity var(--transition);padding:2px 4px;border-radius:var(--radius-xs)}
+.chat-item:hover .chat-delete{opacity:1}
+.chat-item .chat-delete:hover{color:var(--error)}
+
+/* Agent Roster */
+.agent-roster{border-top:1px solid var(--border);padding:12px 16px;max-height:240px;overflow-y:auto}
+.agent-roster h3{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:8px}
+.agent-item{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:var(--radius-xs);font-size:12px;transition:all var(--transition)}
+.agent-item .agent-emoji{font-size:16px;width:22px;text-align:center}
+.agent-item .agent-name{font-weight:600;color:var(--text-primary)}
+.agent-item .agent-role{color:var(--text-muted);font-size:11px}
+.agent-item.active-agent{background:var(--accent-glow);border-left:2px solid var(--accent-light)}
+.agent-item .agent-weight{margin-left:auto;font-size:10px;color:var(--accent-light);font-family:var(--font-mono)}
+
+/* Model Selector */
+.model-selector{border-top:1px solid var(--border);padding:12px 16px}
+.model-selector label{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);display:block;margin-bottom:6px}
+.model-selector select{width:100%;padding:8px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-size:13px;cursor:pointer}
+
+/* ===== Main Chat Area ===== */
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative}
+.chat-header{padding:12px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;background:var(--bg-secondary)}
+.btn-hamburger{display:none;padding:6px;border-radius:var(--radius-xs);color:var(--text-secondary)}
+.btn-hamburger:hover{background:var(--bg-hover)}
+.chat-header .model-badge{display:flex;align-items:center;gap:6px;padding:4px 12px;background:var(--bg-tertiary);border-radius:20px;font-size:12px;font-weight:600;color:var(--accent-light)}
+.chat-header .model-badge .dot{width:8px;height:8px;border-radius:50%;background:var(--success);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.chat-header-actions{margin-left:auto;display:flex;gap:6px}
+.chat-header-actions button{padding:6px 10px;border-radius:var(--radius-xs);color:var(--text-secondary);font-size:13px;transition:all var(--transition)}
+.chat-header-actions button:hover{background:var(--bg-hover);color:var(--text-primary)}
+.chat-header-actions button.active{background:var(--accent-glow);color:var(--accent-light)}
+
+/* Messages */
+#messages{flex:1;overflow-y:auto;padding:20px;scroll-behavior:smooth}
+.message{max-width:800px;margin:0 auto 20px;display:flex;gap:12px;animation:fadeIn 0.3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.message .avatar{width:32px;height:32px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.message.user .avatar{background:var(--accent);color:#fff}
+.message.assistant .avatar{background:var(--bg-active)}
+.message .content{flex:1;min-width:0}
+.message .role{font-size:12px;font-weight:600;margin-bottom:4px;color:var(--text-secondary)}
+.message.user .role{color:var(--accent-light)}
+.message .body{padding:12px 16px;border-radius:var(--radius);font-size:14px;line-height:1.7;white-space:pre-wrap;word-wrap:break-word}
+.message.user .body{background:var(--bg-user);border:1px solid rgba(124,58,237,0.2)}
+.message.assistant .body{background:var(--bg-message);border:1px solid var(--border)}
+.message .body code{font-family:var(--font-mono);font-size:13px;background:var(--bg-tertiary);padding:2px 6px;border-radius:var(--radius-xs)}
+.message .body pre{background:var(--bg-primary);padding:12px;border-radius:var(--radius-sm);overflow-x:auto;margin:8px 0;font-size:13px}
+.message .body pre code{background:none;padding:0}
+.message .actions{display:flex;gap:4px;margin-top:6px;opacity:0;transition:opacity var(--transition)}
+.message:hover .actions{opacity:1}
+.message .actions button{padding:4px 8px;font-size:11px;border-radius:var(--radius-xs);color:var(--text-muted);transition:all var(--transition)}
+.message .actions button:hover{background:var(--bg-hover);color:var(--text-primary)}
+
+/* Thoughts Panel */
+.thoughts-panel{margin-top:8px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;max-width:800px;margin-left:auto;margin-right:auto}
+.thoughts-toggle{display:flex;align-items:center;gap:8px;padding:10px 16px;background:var(--bg-tertiary);cursor:pointer;width:100%;font-size:13px;font-weight:600;color:var(--accent-light);transition:background var(--transition)}
+.thoughts-toggle:hover{background:var(--bg-hover)}
+.thoughts-toggle .arrow{transition:transform 0.2s ease;font-size:10px}
+.thoughts-toggle .arrow.open{transform:rotate(90deg)}
+.thoughts-toggle .toggle-icon{font-size:16px}
+.thoughts-content{padding:16px;background:var(--bg-secondary);display:none}
+.thoughts-content.open{display:block}
+.thoughts-summary{margin-bottom:12px;font-size:13px;color:var(--text-secondary)}
+.thought-agents{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.thought-agent{display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg-tertiary);border-radius:20px;font-size:12px;border:1px solid var(--border)}
+.thought-agent.top-agent{border-color:var(--accent);background:var(--accent-glow)}
+.thought-agent .agent-emoji-small{font-size:14px}
+.thought-agent .agent-weight-bar{height:3px;background:var(--bg-primary);border-radius:2px;width:40px;overflow:hidden;margin-left:4px}
+.thought-agent .agent-weight-fill{height:100%;background:var(--accent-light);border-radius:2px;transition:width 0.5s ease}
+.thought-layers{font-size:12px;color:var(--text-muted);max-height:200px;overflow-y:auto}
+.thought-layer{padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.03);font-family:var(--font-mono)}
+.thought-layer:last-child{border-bottom:none}
+
+/* Typing Indicator */
+.typing-indicator{display:flex;gap:4px;padding:12px 16px}
+.typing-indicator span{width:8px;height:8px;background:var(--text-muted);border-radius:50%;animation:typingBounce 1.4s infinite}
+.typing-indicator span:nth-child(2){animation-delay:0.2s}
+.typing-indicator span:nth-child(3){animation-delay:0.4s}
+@keyframes typingBounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-8px)}}
+
+/* Empty State */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;padding:40px}
+.empty-state .logo-large{font-size:64px;font-weight:800;background:linear-gradient(135deg,var(--accent-light),var(--accent),#c084fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:12px}
+.empty-state h2{font-size:24px;margin-bottom:8px;color:var(--text-primary)}
+.empty-state p{color:var(--text-secondary);font-size:14px;max-width:400px;margin-bottom:24px}
+.suggestion-chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.suggestion-chip{padding:8px 16px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:20px;font-size:13px;cursor:pointer;transition:all var(--transition)}
+.suggestion-chip:hover{background:var(--bg-hover);border-color:var(--accent)}
+
+/* ===== Input Area ===== */
+#input-area{padding:16px 20px;border-top:1px solid var(--border);background:var(--bg-secondary)}
+.input-wrapper{max-width:800px;margin:0 auto;display:flex;gap:10px;align-items:flex-end}
+#message-input{flex:1;resize:none;max-height:150px;min-height:44px;padding:10px 14px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:var(--radius);font-size:14px;line-height:1.5;transition:border-color var(--transition)}
+#message-input::placeholder{color:var(--text-muted)}
+#message-input:focus{border-color:var(--accent)}
+.btn-send{width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:var(--accent);border-radius:var(--radius-sm);color:#fff;transition:all var(--transition);flex-shrink:0}
+.btn-send:hover{background:var(--accent-dark)}
+.btn-send:disabled{opacity:0.4;cursor:not-allowed}
+.btn-stop{width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:var(--error);border-radius:var(--radius-sm);color:#fff;transition:all var(--transition);flex-shrink:0}
+.input-hint{text-align:center;font-size:11px;color:var(--text-muted);margin-top:6px}
+
+/* ===== Settings Panel ===== */
+#settings-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;opacity:0;pointer-events:none;transition:opacity 0.3s ease}
+#settings-overlay.open{opacity:1;pointer-events:auto}
+#settings-panel{position:fixed;right:0;top:0;bottom:0;width:380px;background:var(--bg-secondary);border-left:1px solid var(--border);z-index:201;transform:translateX(100%);transition:transform 0.3s ease;display:flex;flex-direction:column}
+#settings-panel.open{transform:translateX(0)}
+.settings-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.settings-header h3{font-size:16px;font-weight:700}
+.settings-close{padding:6px;border-radius:var(--radius-xs);color:var(--text-secondary);font-size:18px}
+.settings-close:hover{background:var(--bg-hover)}
+.settings-body{flex:1;overflow-y:auto;padding:20px}
+.setting-group{margin-bottom:20px}
+.setting-group label{display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text-secondary)}
+.setting-group label .value{font-family:var(--font-mono);color:var(--accent-light);font-size:12px}
+.setting-group input[type=range]{width:100%;accent-color:var(--accent);height:4px;-webkit-appearance:none;background:var(--bg-tertiary);border-radius:2px;outline:none;border:none;padding:0}
+.setting-group input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--accent);cursor:pointer}
+.setting-group input[type=number]{width:100%;padding:8px 12px;font-family:var(--font-mono);font-size:13px}
+.setting-group textarea{width:100%;resize:vertical;min-height:80px;padding:10px 12px;font-size:13px;line-height:1.5}
+.setting-group .hint{font-size:11px;color:var(--text-muted);margin-top:4px}
+
+/* ===== Toast ===== */
+#toast-container{position:fixed;bottom:80px;right:20px;z-index:300;display:flex;flex-direction:column;gap:8px}
+.toast{padding:10px 16px;background:var(--bg-active);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;animation:toastIn 0.3s ease,toastOut 0.3s ease 2.7s;box-shadow:var(--shadow)}
+.toast.success{border-color:var(--success);color:var(--success)}
+.toast.error{border-color:var(--error);color:var(--error)}
+@keyframes toastIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+@keyframes toastOut{from{opacity:1}to{opacity:0}}
+
+/* ===== Mobile ===== */
+@media(max-width:768px){
+  #sidebar{position:fixed;left:0;top:0;bottom:0;z-index:150;box-shadow:var(--shadow)}
+  #sidebar.collapsed{transform:translateX(-100%)}
+  .btn-hamburger{display:block!important}
+  #settings-panel{width:100%}
+  .chat-header{padding:10px 14px}
+  #messages{padding:12px}
+  #input-area{padding:10px 14px}
+  .suggestion-chips{flex-direction:column;align-items:center}
+}
+
+/* ===== Agent highlight animation ===== */
+@keyframes agentPulse{
+  0%{box-shadow:0 0 0 0 var(--accent-glow)}
+  70%{box-shadow:0 0 0 8px transparent}
+  100%{box-shadow:0 0 0 0 transparent}
+}
+.agent-item.pulse{animation:agentPulse 1s ease}
+
+/* ===== Code block styling ===== */
+.code-block-header{display:flex;align-items:center;justify-content:space-between;padding:6px 12px;background:var(--bg-tertiary);border-radius:var(--radius-sm) var(--radius-sm) 0 0;font-size:11px;color:var(--text-muted)}
+.code-block-header button{font-size:11px;padding:2px 8px;border-radius:var(--radius-xs);color:var(--text-muted)}
+.code-block-header button:hover{background:var(--bg-hover);color:var(--text-primary)}
+</style>
+</head>
+<body>
+
+<!-- Loading Screen -->
+<div id="loading-screen">
+  <div class="logo">ALM-1-Coder</div>
+  <div class="subtitle">Mixture of Agents &middot; Browser Inference Engine</div>
+  <div class="progress-container"><div class="progress-bar" id="load-progress"></div></div>
+  <div class="status" id="load-status">Initializing...</div>
+</div>
+
+<!-- App -->
+<div id="app" style="display:none">
+  <!-- Sidebar -->
+  <aside id="sidebar">
+    <div class="sidebar-header">
+      <h2>ALM-1-Coder</h2>
+      <button class="btn-new-chat" onclick="newChat()" title="New Chat">+ New</button>
+    </div>
+    <div class="sidebar-search">
+      <input type="text" id="search-input" placeholder="Search conversations..." oninput="filterChats()">
+    </div>
+    <div id="chat-list"></div>
+
+    <!-- Agent Roster -->
+    <div class="agent-roster" id="agent-roster">
+      <h3>Agent Roster</h3>
+      <!-- Populated by JS -->
+    </div>
+
+    <!-- Model Selector -->
+    <div class="model-selector">
+      <label>Model</label>
+      <select id="model-select" onchange="switchModel(this.value)">
+        <option value="alm-1-coder">ALM-1-Coder (MoA)</option>
+        <option value="alm-1">ALM-1 (Original)</option>
+      </select>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main id="main">
+    <div class="chat-header">
+      <button class="btn-hamburger" onclick="toggleSidebar()" style="display:none">&#9776;</button>
+      <div class="model-badge">
+        <span class="dot"></span>
+        <span id="model-name">ALM-1-Coder</span>
+      </div>
+      <div class="chat-header-actions">
+        <button id="btn-thoughts" onclick="toggleViewThoughts()" title="View Thoughts">
+          &#128161; Thoughts
+        </button>
+        <button onclick="exportChat()" title="Export Chat">&#128190; Export</button>
+        <button onclick="openSettings()" title="Settings">&#9881; Settings</button>
+      </div>
+    </div>
+
+    <div id="messages">
+      <div class="empty-state" id="empty-state">
+        <div class="logo-large">ALM-1-Coder</div>
+        <h2>Mixture of Agents</h2>
+        <p>10 specialized AI agents collaborate to write, debug, and architect your code. Toggle View Thoughts to see them at work.</p>
+        <div class="suggestion-chips">
+          <button class="suggestion-chip" onclick="useSuggestion('Write a Python function to merge two sorted linked lists')">Merge sorted lists</button>
+          <button class="suggestion-chip" onclick="useSuggestion('Debug this code: def fib(n): return fib(n-1) + fib(n-2)')">Debug fibonacci</button>
+          <button class="suggestion-chip" onclick="useSuggestion('Design a REST API for a todo app with auth')">Design REST API</button>
+          <button class="suggestion-chip" onclick="useSuggestion('Explain the difference between BFS and DFS')">BFS vs DFS</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="input-area">
+      <div class="input-wrapper">
+        <textarea id="message-input" placeholder="Send a message..." rows="1" onkeydown="handleInputKey(event)" oninput="autoResize(this)"></textarea>
+        <button id="btn-send" class="btn-send" onclick="sendMessage()" title="Send">&#9654;</button>
+      </div>
+      <div class="input-hint">Enter to send &middot; Shift+Enter for new line &middot; Powered by Pyodide + NumPy</div>
+    </div>
+  </main>
+</div>
+
+<!-- Settings Panel -->
+<div id="settings-overlay" onclick="closeSettings()"></div>
+<div id="settings-panel">
+  <div class="settings-header">
+    <h3>Settings</h3>
+    <button class="settings-close" onclick="closeSettings()">&times;</button>
+  </div>
+  <div class="settings-body">
+    <div class="setting-group">
+      <label>Temperature <span class="value" id="temp-val">0.7</span></label>
+      <input type="range" id="setting-temp" min="0" max="2" step="0.1" value="0.7" oninput="updateSetting('temp',this.value)">
+      <div class="hint">Higher = more creative, Lower = more focused</div>
+    </div>
+    <div class="setting-group">
+      <label>Top P <span class="value" id="topp-val">0.9</span></label>
+      <input type="range" id="setting-topp" min="0" max="1" step="0.05" value="0.9" oninput="updateSetting('topp',this.value)">
+      <div class="hint">Nucleus sampling threshold</div>
+    </div>
+    <div class="setting-group">
+      <label>Top K <span class="value" id="topk-val">40</span></label>
+      <input type="range" id="setting-topk" min="0" max="100" step="1" value="40" oninput="updateSetting('topk',this.value)">
+      <div class="hint">Limit sampling to top K tokens</div>
+    </div>
+    <div class="setting-group">
+      <label>Max Tokens <span class="value" id="maxtok-val">256</span></label>
+      <input type="number" id="setting-maxtok" min="1" max="2048" step="1" value="256" oninput="updateSetting('maxtok',this.value)">
+      <div class="hint">Maximum number of tokens to generate</div>
+    </div>
+    <div class="setting-group">
+      <label>Repetition Penalty <span class="value" id="reppen-val">1.3</span></label>
+      <input type="range" id="setting-reppen" min="1" max="2" step="0.05" value="1.3" oninput="updateSetting('reppen',this.value)">
+      <div class="hint">Penalize repeated tokens (>1.0 = less repetition)</div>
+    </div>
+    <div class="setting-group">
+      <label>System Prompt</label>
+      <textarea id="setting-system" placeholder="You are ALM-1-Coder, an expert coding assistant...">You are ALM-1-Coder, an expert coding assistant powered by a Mixture of Agents architecture. Write clean, efficient, well-documented code.</textarea>
+      <div class="hint">Instructs the model how to behave</div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div id="toast-container"></div>
+
+<script>
+// ====================================================================
+// ALM-1-Coder Web UI — Full Client-Side Inference with Pyodide
+// ====================================================================
+
+// ===== Agent Definitions =====
+const AGENTS = [
+  { id:0, emoji:"\u{1F9E0}", name:"ENGLISH",    role:"CEO",             fullName:"Comprehends, routes, composes" },
+  { id:1, emoji:"\u{1F4BB}", name:"SYNTAX",     role:"Senior Dev",     fullName:"Writes clean code" },
+  { id:2, emoji:"\u{1F9EE}", name:"LOGIC",      role:"Algo Eng",       fullName:"Optimizes and reasons" },
+  { id:3, emoji:"\u{1F50D}", name:"DEBUGGER",   role:"QA",             fullName:"Finds and fixes bugs" },
+  { id:4, emoji:"\u{1F3D7}\uFE0F", name:"ARCHITECT",  role:"Sys Arch",  fullName:"Designs structure" },
+  { id:5, emoji:"\u{1F310}", name:"HTML",       role:"Frontend",       fullName:"Builds web UIs" },
+  { id:6, emoji:"\u{1F504}", name:"TRANSLATOR", role:"Loc",            fullName:"Converts between languages" },
+  { id:7, emoji:"\u{1F9E0}", name:"REASONING",  role:"CSO",            fullName:"Thinks step by step" },
+  { id:8, emoji:"\u{1F4AC}", name:"THOUGHT",    role:"PM",             fullName:"Coordinates agent dialogue" },
+  { id:9, emoji:"\u{1F50E}", name:"SEARCH",     role:"Research",       fullName:"Looks up docs and references" },
+];
+
+// ===== State =====
+let pyodide = null;
+let almModel = null;
+let modelReady = false;
+let currentModel = "alm-1-coder";
+let viewThoughts = false;
+let generating = false;
+let abortGeneration = false;
+let activeChatId = null;
+let chats = {};
+
+const settings = {
+  temperature: 0.7,
+  topP: 0.9,
+  topK: 40,
+  maxTokens: 256,
+  repetitionPenalty: 1.3,
+  systemPrompt: "You are ALM-1-Coder, an expert coding assistant powered by a Mixture of Agents architecture. Write clean, efficient, well-documented code."
+};
+
+// ===== Model Paths =====
+const MODEL_PATHS = {
+  "alm-1-coder": {
+    weights: "alm_coder_weights.npz",
+    config: "alm_coder_config.json"
+  },
+  "alm-1": {
+    weights: "../ALM-1/web_original/alm_weights.npz",
+    config: "../ALM-1/web_original/alm_config.json"
+  }
+};
+
+// ===== Simple Byte-Level Tokenizer =====
+// This is a placeholder — a real BPE tokenizer would be loaded from the model config.
+// For now, we use a simple character-level encoding that maps printable ASCII + common Unicode.
+const TOKENIZER_VOCAB_SIZE = 32000;
+
+function encode(text) {
+  // Simple byte-level encoding: each byte becomes a token id
+  // For a real model, you'd load a sentencepiece/BPE tokenizer
+  const encoder = new TextEncoder();
+  const bytes = encoder.encode(text);
+  return Array.from(bytes);
+}
+
+function decode(tokenIds) {
+  // Decode token ids back to string
+  // Filter out any tokens outside byte range for this simple tokenizer
+  const validBytes = tokenIds.filter(t => t >= 0 && t < 256);
+  const decoder = new TextDecoder('utf-8', { fatal: false });
+  return decoder.decode(new Uint8Array(validBytes));
+}
+
+// ===== Pyodide Initialization =====
+async function initPyodide() {
+  const progressBar = document.getElementById("load-progress");
+  const statusEl = document.getElementById("load-status");
+
+  function setProgress(pct, msg) {
+    progressBar.style.width = pct + "%";
+    statusEl.textContent = msg;
+  }
+
+  try {
+    // Step 1: Load Pyodide
+    setProgress(5, "Loading Pyodide runtime...");
+    pyodide = await loadPyodide({
+      indexURL: "https://cdn.jsdelivr.net/pyodide/v0.24.1/full/"
+    });
+    setProgress(30, "Pyodide loaded.");
+
+    // Step 2: Install numpy
+    setProgress(35, "Installing NumPy...");
+    await pyodide.loadPackage("numpy");
+    setProgress(55, "NumPy installed.");
+
+    // Step 3: Load inference engine
+    setProgress(60, "Loading inference engine...");
+    const inferenceResp = await fetch("inference.py");
+    const inferenceCode = await inferenceResp.text();
+    await pyodide.runPythonAsync(inferenceCode);
+    setProgress(75, "Inference engine loaded.");
+
+    // Step 4: Load model weights & config
+    setProgress(80, "Loading model weights...");
+    await loadModel(currentModel);
+    setProgress(95, "Model ready.");
+
+    // Step 5: Done
+    setProgress(100, "ALM-1-Coder is ready!");
+    modelReady = true;
+
+    // Transition to app
+    setTimeout(() => {
+      document.getElementById("loading-screen").classList.add("hidden");
+      document.getElementById("app").style.display = "flex";
+    }, 600);
+
+  } catch (err) {
+    setProgress(100, "Error: " + err.message);
+    console.error("Initialization failed:", err);
+    statusEl.style.color = "var(--error)";
+    // Still show the app but in demo mode
+    setTimeout(() => {
+      document.getElementById("loading-screen").classList.add("hidden");
+      document.getElementById("app").style.display = "flex";
+      showToast("Running in demo mode — model could not be loaded", "error");
+    }, 2000);
+  }
+}
+
+async function loadModel(modelKey) {
+  const paths = MODEL_PATHS[modelKey];
+  try {
+    // Fetch weights
+    const weightsResp = await fetch(paths.weights);
+    if (!weightsResp.ok) throw new Error(`Weights not found: ${paths.weights}`);
+    const weightsBlob = await weightsResp.blob();
+    const weightsArrayBuffer = await weightsBlob.arrayBuffer();
+
+    // Write weights to Pyodide filesystem
+    const weightsUint8 = new Uint8Array(weightsArrayBuffer);
+    pyodide.FS.writeFile("model_weights.npz", weightsUint8);
+
+    // Fetch config
+    let configJson = "{}";
+    try {
+      const configResp = await fetch(paths.config);
+      if (configResp.ok) {
+        configJson = await configResp.text();
+      }
+    } catch (e) {
+      console.warn("Config not found, using defaults");
+    }
+    pyodide.FS.writeFile("model_config.json", configJson);
+
+    // Instantiate model in Python
+    await pyodide.runPythonAsync(`
+import json
+alm_model = ALMCoderInference(weights_path="model_weights.npz", config_path="model_config.json")
+print(f"Model loaded: {alm_model.n_layer} layers, {alm_model.n_head} heads, {alm_model.n_embd} embed, {alm_model.n_agents} agents")
+`);
+    almModel = true; // flag that model exists in Python
+  } catch (err) {
+    console.warn("Model load failed:", err.message);
+    almModel = false;
+  }
+}
+
+async function switchModel(modelKey) {
+  if (modelKey === currentModel) return;
+  if (generating) {
+    showToast("Cannot switch model while generating", "error");
+    document.getElementById("model-select").value = currentModel;
+    return;
+  }
+  currentModel = modelKey;
+  document.getElementById("model-name").textContent =
+    modelKey === "alm-1-coder" ? "ALM-1-Coder" : "ALM-1";
+
+  if (pyodide && almModel) {
+    showToast("Switching model — reloading weights...", "success");
+    modelReady = false;
+    try {
+      await loadModel(modelKey);
+      modelReady = almModel !== false;
+      if (modelReady) {
+        showToast("Model switched successfully", "success");
+      } else {
+        showToast("Model switch failed — running in demo mode", "error");
+      }
+    } catch (err) {
+      showToast("Model switch error: " + err.message, "error");
+      modelReady = false;
+    }
+  }
+}
+
+// ===== Generation =====
+async function generateResponse(prompt) {
+  if (!pyodide || !almModel) {
+    // Demo mode — return a mock response
+    return {
+      text: generateDemoResponse(prompt),
+      thoughts: generateDemoThoughts()
+    };
+  }
+
+  // Encode prompt
+  const tokens = encode(prompt);
+
+  // Build Python generation call
+  const returnThoughts = viewThoughts;
+  const pyCode = `
+result = alm_model.generate(
+    tokens=${JSON.stringify(tokens)},
+    max_new_tokens=${settings.maxTokens},
+    temperature=${settings.temperature},
+    top_k=${settings.topK},
+    top_p=${settings.topP},
+    repetition_penalty=${settings.repetitionPenalty},
+    return_thoughts=${returnThoughts ? "True" : "False"}
+)
+`;
+  await pyodide.runPythonAsync(pyCode);
+
+  if (returnThoughts) {
+    const resultPy = pyodide.globals.get("result");
+    // result is a tuple (tokens_list, thoughts_list) or just tokens_list
+    const generatedTokens = resultPy.toJs();
+    if (Array.isArray(generatedTokens) && generatedTokens.length === 2) {
+      const [tokList, thoughtList] = generatedTokens;
+      const newTokens = Array.from(tokList).slice(tokens.length);
+      const text = decode(newTokens);
+      const thoughts = processThoughts(thoughtList);
+      return { text, thoughts };
+    } else {
+      const newTokens = Array.from(generatedTokens).slice(tokens.length);
+      return { text: decode(newTokens), thoughts: null };
+    }
+  } else {
+    const resultPy = pyodide.globals.get("result");
+    const generatedTokens = resultPy.toJs();
+    const newTokens = Array.from(generatedTokens).slice(tokens.length);
+    return { text: decode(newTokens), thoughts: null };
+  }
+}
+
+function processThoughts(thoughtList) {
+  // Convert Pyodide thought logs to JS objects
+  try {
+    const thoughts = [];
+    const jsList = thoughtList.toJs ? thoughtList.toJs() : thoughtList;
+    for (const step of jsList) {
+      const stepObj = step.toJs ? step.toJs() : step;
+      const layers = [];
+      const layersList = stepObj.layers.toJs ? stepObj.layers.toJs() : stepObj.layers;
+      for (const l of layersList) {
+        const lObj = l.toJs ? l.toJs() : l;
+        layers.push({
+          layer: lObj.layer,
+          agent_probs: Array.from(lObj.agent_probs.toJs ? lObj.agent_probs.toJs() : lObj.agent_probs),
+          active_agents: Array.from(lObj.active_agents.toJs ? lObj.active_agents.toJs() : lObj.active_agents),
+          expert_weights: Array.from(lObj.expert_weights.toJs ? lObj.expert_weights.toJs() : lObj.expert_weights),
+          top_agent: lObj.top_agent,
+          top_agent_weight: lObj.top_agent_weight,
+        });
+      }
+      thoughts.push({
+        step: stepObj.step,
+        token: stepObj.token,
+        layers
+      });
+    }
+    return thoughts;
+  } catch (e) {
+    console.warn("Failed to process thoughts:", e);
+    return null;
+  }
+}
+
+// ===== Demo Mode =====
+function generateDemoResponse(prompt) {
+  const lower = prompt.toLowerCase();
+  if (lower.includes("fib") || lower.includes("fibonacci")) {
+    return `Here's a proper Fibonacci implementation with memoization:\n\ndef fibonacci(n, memo={}):\n    if n in memo:\n        return memo[n]\n    if n <= 1:\n        return n\n    memo[n] = fibonacci(n-1, memo) + fibonacci(n-2, memo)\n    return memo[n]\n\n# Iterative version (more efficient):\ndef fibonacci_iter(n):\n    if n <= 1:\n        return n\n    a, b = 0, 1\n    for _ in range(2, n + 1):\n        a, b = b, a + b\n    return b\n\nThe original code is missing base cases, which causes infinite recursion. Both versions above handle this correctly.`;
+  }
+  if (lower.includes("merge") || lower.includes("sorted")) {
+    return `Here's a clean implementation to merge two sorted linked lists:\n\nclass ListNode:\n    def __init__(self, val=0, next=None):\n        self.val = val\n        self.next = next\n\ndef merge_two_lists(l1, l2):\n    dummy = ListNode()\n    current = dummy\n    \n    while l1 and l2:\n        if l1.val <= l2.val:\n            current.next = l1\n            l1 = l1.next\n        else:\n            current.next = l2\n            l2 = l2.next\n        current = current.next\n    \n    current.next = l1 or l2\n    return dummy.next\n\nTime: O(n+m) | Space: O(1)`;
+  }
+  if (lower.includes("rest") || lower.includes("api")) {
+    return `Here's a REST API design for a Todo app with authentication:\n\n## Endpoints\n\n### Auth\n- POST /api/auth/register  — Create account\n- POST /api/auth/login     — Get JWT token\n- POST /api/auth/refresh   — Refresh token\n\n### Todos\n- GET    /api/todos         — List (paginated, filterable)\n- POST   /api/todos         — Create todo\n- GET    /api/todos/:id     — Get single todo\n- PUT    /api/todos/:id     — Update todo\n- DELETE /api/todos/:id     — Delete todo\n\n### Auth Middleware\n\ndef auth_middleware(request):\n    token = request.headers.get("Authorization", "").replace("Bearer ", "")\n    try:\n        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])\n        request.user_id = payload["user_id"]\n    except jwt.InvalidTokenError:\n        raise HTTPException(401, "Invalid token")`;
+  }
+  if (lower.includes("bfs") || lower.includes("dfs")) {
+    return `## BFS vs DFS\n\n**BFS (Breadth-First Search)**\n- Explores neighbors level by level\n- Uses a queue (FIFO)\n- Finds shortest path in unweighted graphs\n- Better for "closest" solutions\n\ndef bfs(graph, start):\n    visited = {start}\n    queue = deque([start])\n    while queue:\n        node = queue.popleft()\n        for neighbor in graph[node]:\n            if neighbor not in visited:\n                visited.add(neighbor)\n                queue.append(neighbor)\n\n**DFS (Depth-First Search)**\n- Explores as deep as possible first\n- Uses a stack (LIFO) or recursion\n- Uses less memory\n- Better for "any" solution or topological sort\n\ndef dfs(graph, start, visited=None):\n    if visited is None:\n        visited = set()\n    visited.add(start)\n    for neighbor in graph[start]:\n        if neighbor not in visited:\n            dfs(graph, neighbor, visited)`;
+  }
+  return `I'd be happy to help with that! Let me analyze your request and provide a comprehensive response.\n\nBased on your input, here are my thoughts:\n\n1. **Understanding**: I've parsed your request and identified the key requirements.\n2. **Approach**: I'll break this down into manageable components.\n3. **Solution**: Let me provide a well-structured answer.\n\nFeel free to ask follow-up questions or request more specific implementations!`;
+}
+
+function generateDemoThoughts() {
+  // Generate plausible demo thought data
+  const steps = [];
+  const numSteps = Math.min(8, settings.maxTokens > 10 ? 8 : 3);
+  for (let s = 0; s < numSteps; s++) {
+    const layers = [];
+    const numLayers = 4;
+    for (let l = 0; l < numLayers; l++) {
+      // Generate random agent probs that sum to ~1
+      let probs = AGENTS.map(() => Math.random());
+      const sum = probs.reduce((a,b) => a+b, 0);
+      probs = probs.map(p => p/sum);
+      // Pick top-k
+      const sorted = probs.map((p,i) => ({p,i})).sort((a,b) => b.p - a.p);
+      const topK = 3;
+      const activeAgents = sorted.slice(0, topK).map(s => s.i);
+      layers.push({
+        layer: l,
+        agent_probs: probs,
+        active_agents: activeAgents,
+        expert_weights: [0.4, 0.35, 0.25],
+        top_agent: activeAgents[0],
+        top_agent_weight: probs[activeAgents[0]]
+      });
+    }
+    steps.push({ step: s, token: s, layers });
+  }
+  return steps;
+}
+
+// ===== Chat Management =====
+function newChat() {
+  const id = "chat_" + Date.now();
+  chats[id] = {
+    id,
+    title: "New Chat",
+    messages: [],
+    created: Date.now()
+  };
+  activeChatId = id;
+  saveChats();
+  renderChatList();
+  renderMessages();
+}
+
+function deleteChat(id) {
+  delete chats[id];
+  if (activeChatId === id) {
+    const keys = Object.keys(chats);
+    activeChatId = keys.length > 0 ? keys[keys.length - 1] : null;
+  }
+  saveChats();
+  renderChatList();
+  renderMessages();
+}
+
+function selectChat(id) {
+  activeChatId = id;
+  renderChatList();
+  renderMessages();
+  if (window.innerWidth <= 768) toggleSidebar();
+}
+
+function getActiveChat() {
+  return activeChatId ? chats[activeChatId] : null;
+}
+
+function filterChats() {
+  const q = document.getElementById("search-input").value.toLowerCase();
+  document.querySelectorAll(".chat-item").forEach(el => {
+    const title = el.querySelector(".chat-title").textContent.toLowerCase();
+    el.style.display = title.includes(q) ? "" : "none";
+  });
+}
+
+// ===== Storage =====
+function saveChats() {
+  try {
+    localStorage.setItem("alm_chats", JSON.stringify(chats));
+    localStorage.setItem("alm_active_chat", activeChatId);
+  } catch (e) { /* quota exceeded */ }
+}
+
+function loadChats() {
+  try {
+    const saved = localStorage.getItem("alm_chats");
+    if (saved) chats = JSON.parse(saved);
+    activeChatId = localStorage.getItem("alm_active_chat");
+    if (!chats[activeChatId]) {
+      const keys = Object.keys(chats);
+      activeChatId = keys.length > 0 ? keys[0] : null;
+    }
+  } catch (e) {
+    chats = {};
+  }
+  if (Object.keys(chats).length === 0) newChat();
+}
+
+// ===== Rendering =====
+function renderChatList() {
+  const list = document.getElementById("chat-list");
+  const sortedChats = Object.values(chats).sort((a,b) => b.created - a.created);
+  list.innerHTML = sortedChats.map(chat => `
+    <div class="chat-item ${chat.id === activeChatId ? 'active' : ''}" onclick="selectChat('${chat.id}')">
+      <span style="font-size:14px">&#128172;</span>
+      <span class="chat-title">${escapeHtml(chat.title)}</span>
+      <button class="chat-delete" onclick="event.stopPropagation();deleteChat('${chat.id}')" title="Delete">&times;</button>
+    </div>
+  `).join("");
+}
+
+function renderMessages() {
+  const container = document.getElementById("messages");
+  const chat = getActiveChat();
+  const emptyState = document.getElementById("empty-state");
+
+  if (!chat || chat.messages.length === 0) {
+    // Show empty state
+    container.innerHTML = "";
+    container.appendChild(emptyState);
+    emptyState.style.display = "flex";
+    return;
+  }
+
+  emptyState.style.display = "none";
+  container.innerHTML = chat.messages.map((msg, idx) => renderMessage(msg, idx)).join("");
+  scrollToBottom();
+}
+
+function renderMessage(msg, idx) {
+  const isUser = msg.role === "user";
+  let html = `
+    <div class="message ${msg.role}" data-idx="${idx}">
+      <div class="avatar">${isUser ? "&#128100;" : "&#129302;"}</div>
+      <div class="content">
+        <div class="role">${isUser ? "You" : "ALM-1-Coder"}</div>
+        <div class="body">${formatMessageBody(msg.content)}</div>
+        <div class="actions">
+          <button onclick="copyMessage(${idx})" title="Copy">&#128203; Copy</button>
+          ${!isUser ? `<button onclick="regenerateMessage(${idx})" title="Regenerate">&#128260; Retry</button>` : ""}
+        </div>
+      </div>
+    </div>`;
+
+  // Add thoughts panel if available
+  if (msg.thoughts && viewThoughts) {
+    html += renderThoughtsPanel(msg.thoughts, idx);
+  }
+
+  return html;
+}
+
+function renderThoughtsPanel(thoughts, msgIdx) {
+  if (!thoughts || thoughts.length === 0) return "";
+
+  // Aggregate agent activations across all steps
+  const agentTotals = AGENTS.map(() => 0);
+  let totalSteps = thoughts.length;
+
+  thoughts.forEach(step => {
+    step.layers.forEach(layer => {
+      layer.agent_probs.forEach((p, i) => {
+        agentTotals[i] += p;
+      });
+    });
+  });
+
+  const totalLayers = thoughts.reduce((sum, s) => sum + s.layers.length, 0);
+  const agentAvgs = agentTotals.map(t => t / totalLayers);
+  const maxAgentAvg = Math.max(...agentAvgs);
+
+  // Sort agents by activation
+  const sortedAgents = AGENTS.map((a, i) => ({...a, avgWeight: agentAvgs[i]}))
+    .sort((a, b) => b.avgWeight - a.avgWeight);
+
+  // Build agent chips
+  const agentChips = sortedAgents.slice(0, 5).map((a, i) => {
+    const pct = maxAgentAvg > 0 ? (a.avgWeight / maxAgentAvg * 100) : 0;
+    const isTop = i === 0;
+    return `<div class="thought-agent ${isTop ? 'top-agent' : ''}">
+      <span class="agent-emoji-small">${a.emoji}</span>
+      <span>${a.name}</span>
+      <span style="color:var(--text-muted);font-size:10px">${(a.avgWeight * 100).toFixed(1)}%</span>
+      <div class="agent-weight-bar"><div class="agent-weight-fill" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join("");
+
+  // Build layer summary (condensed)
+  const layerSummary = thoughts.slice(-3).map(step => {
+    const layerStrs = step.layers.slice(0, 2).map(l => {
+      const topAgent = AGENTS[l.active_agents[0]] || AGENTS[0];
+      return `L${l.layer}: ${topAgent.emoji}${topAgent.name}(${(l.top_agent_weight*100).toFixed(0)}%)`;
+    }).join(" | ");
+    return `<div class="thought-layer">Step ${step.step}: ${layerStrs}${step.layers.length > 2 ? ` +${step.layers.length - 2} more` : ""}</div>`;
+  }).join("");
+
+  const panelId = `thoughts-${msgIdx}`;
+  return `
+    <div class="thoughts-panel">
+      <button class="thoughts-toggle" onclick="toggleThoughtsPanel('${panelId}')">
+        <span class="arrow" id="arrow-${panelId}">&#9654;</span>
+        <span class="toggle-icon">&#128161;</span>
+        <span>Agent Thoughts</span>
+        <span style="margin-left:auto;font-size:11px;color:var(--text-muted)">${totalSteps} steps &middot; ${sortedAgents.filter(a => a.avgWeight > 0.05).length} agents active</span>
+      </button>
+      <div class="thoughts-content" id="${panelId}">
+        <div class="thoughts-summary">
+          The model routed through <strong>${sortedAgents.filter(a => a.avgWeight > 0.05).length}</strong> primary agents
+          across <strong>${totalLayers}</strong> layer decisions. Top agent: ${sortedAgents[0].emoji} <strong>${sortedAgents[0].name}</strong> (${(sortedAgents[0].avgWeight*100).toFixed(1)}% avg).
+        </div>
+        <div class="thought-agents">${agentChips}</div>
+        <div class="thought-layers">${layerSummary}</div>
+      </div>
+    </div>`;
+}
+
+function formatMessageBody(text) {
+  // Basic markdown-like formatting
+  let html = escapeHtml(text);
+
+  // Code blocks with ```
+  html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
+    return `<div><div class="code-block-header"><span>${lang || "code"}</span><button onclick="copyCode(this)">&#128203; Copy</button></div><pre><code>${code.trim()}</code></pre></div>`;
+  });
+
+  // Inline code
+  html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
+
+  // Bold
+  html = html.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+
+  // Italic
+  html = html.replace(/\*(.+?)\*/g, "<em>$1</em>");
+
+  // Headers
+  html = html.replace(/^### (.+)$/gm, '<h4 style="margin:8px 0 4px;font-size:14px">$1</h4>');
+  html = html.replace(/^## (.+)$/gm, '<h3 style="margin:10px 0 4px;font-size:16px">$1</h3>');
+
+  // Lists
+  html = html.replace(/^- (.+)$/gm, '<div style="padding-left:16px">&bull; $1</div>');
+  html = html.replace(/^\d+\. (.+)$/gm, '<div style="padding-left:16px">$1</div>');
+
+  return html;
+}
+
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function scrollToBottom() {
+  const container = document.getElementById("messages");
+  requestAnimationFrame(() => {
+    container.scrollTop = container.scrollHeight;
+  });
+}
+
+// ===== User Actions =====
+async function sendMessage() {
+  const input = document.getElementById("message-input");
+  const text = input.value.trim();
+  if (!text || generating) return;
+
+  // Ensure we have a chat
+  if (!activeChatId) newChat();
+  const chat = getActiveChat();
+
+  // Add user message
+  chat.messages.push({ role: "user", content: text });
+
+  // Update title from first message
+  if (chat.messages.length === 1) {
+    chat.title = text.slice(0, 50) + (text.length > 50 ? "..." : "");
+    renderChatList();
+  }
+
+  input.value = "";
+  autoResize(input);
+  renderMessages();
+
+  // Generate response
+  generating = true;
+  abortGeneration = false;
+  updateSendButton();
+
+  // Show typing indicator
+  appendTypingIndicator();
+
+  try {
+    // Build prompt with system + history
+    const prompt = buildPrompt(chat);
+
+    // Generate (with optional streaming simulation)
+    const result = await generateResponse(prompt);
+
+    // Remove typing indicator
+    removeTypingIndicator();
+
+    if (!abortGeneration) {
+      chat.messages.push({
+        role: "assistant",
+        content: result.text,
+        thoughts: result.thoughts
+      });
+      saveChats();
+      renderMessages();
+
+      // Highlight active agents
+      if (result.thoughts && viewThoughts) {
+        highlightActiveAgents(result.thoughts);
+      }
+    }
+  } catch (err) {
+    removeTypingIndicator();
+    chat.messages.push({
+      role: "assistant",
+      content: `Error during generation: ${err.message}`
+    });
+    renderMessages();
+  }
+
+  generating = false;
+  abortGeneration = false;
+  updateSendButton();
+}
+
+function buildPrompt(chat) {
+  let prompt = settings.systemPrompt + "\n\n";
+  // Include last N messages for context
+  const contextMessages = chat.messages.slice(-10);
+  for (const msg of contextMessages) {
+    if (msg.role === "user") {
+      prompt += "User: " + msg.content + "\n";
+    } else {
+      prompt += "Assistant: " + msg.content + "\n";
+    }
+  }
+  prompt += "Assistant:";
+  return prompt;
+}
+
+function stopGeneration() {
+  abortGeneration = true;
+}
+
+function useSuggestion(text) {
+  document.getElementById("message-input").value = text;
+  sendMessage();
+}
+
+function handleInputKey(e) {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+}
+
+function autoResize(el) {
+  el.style.height = "auto";
+  el.style.height = Math.min(el.scrollHeight, 150) + "px";
+}
+
+function updateSendButton() {
+  const btn = document.getElementById("btn-send");
+  if (generating) {
+    btn.className = "btn-stop";
+    btn.innerHTML = "&#9632;";
+    btn.onclick = stopGeneration;
+    btn.title = "Stop";
+  } else {
+    btn.className = "btn-send";
+    btn.innerHTML = "&#9654;";
+    btn.onclick = sendMessage;
+    btn.title = "Send";
+  }
+}
+
+// ===== Thoughts =====
+function toggleViewThoughts() {
+  viewThoughts = !viewThoughts;
+  const btn = document.getElementById("btn-thoughts");
+  btn.classList.toggle("active", viewThoughts);
+  renderMessages();
+  showToast(viewThoughts ? "View Thoughts enabled" : "View Thoughts disabled", "success");
+}
+
+function toggleThoughtsPanel(panelId) {
+  const content = document.getElementById(panelId);
+  const arrow = document.getElementById("arrow-" + panelId);
+  if (content && arrow) {
+    const isOpen = content.classList.contains("open");
+    content.classList.toggle("open", !isOpen);
+    arrow.classList.toggle("open", !isOpen);
+  }
+}
+
+function highlightActiveAgents(thoughts) {
+  // Flash the sidebar agent items based on most active agents
+  if (!thoughts || thoughts.length === 0) return;
+
+  const lastStep = thoughts[thoughts.length - 1];
+  if (!lastStep || !lastStep.layers || lastStep.layers.length === 0) return;
+
+  const agentSet = new Set();
+  lastStep.layers.forEach(l => {
+    l.active_agents.forEach(a => agentSet.add(a));
+  });
+
+  document.querySelectorAll(".agent-item").forEach(el => {
+    const agentId = parseInt(el.dataset.agentId);
+    if (agentSet.has(agentId)) {
+      el.classList.add("active-agent", "pulse");
+      setTimeout(() => el.classList.remove("pulse"), 1000);
+    } else {
+      el.classList.remove("active-agent");
+    }
+  });
+}
+
+// ===== Agent Roster =====
+function renderAgentRoster() {
+  const roster = document.getElementById("agent-roster");
+  roster.innerHTML = `<h3>Agent Roster</h3>` + AGENTS.map(a => `
+    <div class="agent-item" data-agent-id="${a.id}">
+      <span class="agent-emoji">${a.emoji}</span>
+      <span class="agent-name">${a.name}</span>
+      <span class="agent-role">${a.role}</span>
+    </div>
+  `).join("");
+}
+
+// ===== Copy / Export =====
+function copyMessage(idx) {
+  const chat = getActiveChat();
+  if (!chat || !chat.messages[idx]) return;
+  navigator.clipboard.writeText(chat.messages[idx].content).then(() => {
+    showToast("Copied to clipboard", "success");
+  });
+}
+
+function copyCode(btn) {
+  const codeBlock = btn.closest("div").querySelector("code");
+  if (codeBlock) {
+    navigator.clipboard.writeText(codeBlock.textContent).then(() => {
+      showToast("Code copied", "success");
+    });
+  }
+}
+
+function exportChat() {
+  const chat = getActiveChat();
+  if (!chat) return;
+
+  const data = {
+    title: chat.title,
+    exported: new Date().toISOString(),
+    model: currentModel,
+    messages: chat.messages.map(m => ({
+      role: m.role,
+      content: m.content,
+      ...(m.thoughts ? { thoughts_summary: summarizeThoughts(m.thoughts) } : {})
+    }))
+  };
+
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `alm-1-coder-${chat.id}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast("Chat exported", "success");
+}
+
+function summarizeThoughts(thoughts) {
+  if (!thoughts) return null;
+  const agentTotals = AGENTS.map(() => 0);
+  thoughts.forEach(step => {
+    step.layers.forEach(layer => {
+      layer.agent_probs.forEach((p, i) => { agentTotals[i] += p; });
+    });
+  });
+  const total = agentTotals.reduce((a,b) => a+b, 0);
+  return AGENTS.map((a, i) => ({
+    name: a.name,
+    avg_weight: (agentTotals[i] / total * 100).toFixed(1) + "%"
+  }));
+}
+
+function regenerateMessage(idx) {
+  const chat = getActiveChat();
+  if (!chat) return;
+  // Remove messages from idx onward
+  chat.messages = chat.messages.slice(0, idx);
+  saveChats();
+  renderMessages();
+  // Re-generate
+  sendMessage();
+}
+
+// ===== Settings =====
+function openSettings() {
+  document.getElementById("settings-overlay").classList.add("open");
+  document.getElementById("settings-panel").classList.add("open");
+}
+
+function closeSettings() {
+  document.getElementById("settings-overlay").classList.remove("open");
+  document.getElementById("settings-panel").classList.remove("open");
+}
+
+function updateSetting(key, value) {
+  const v = parseFloat(value);
+  switch (key) {
+    case "temp":
+      settings.temperature = v;
+      document.getElementById("temp-val").textContent = v.toFixed(1);
+      break;
+    case "topp":
+      settings.topP = v;
+      document.getElementById("topp-val").textContent = v.toFixed(2);
+      break;
+    case "topk":
+      settings.topK = v;
+      document.getElementById("topk-val").textContent = v;
+      break;
+    case "maxtok":
+      settings.maxTokens = Math.max(1, Math.round(v));
+      document.getElementById("maxtok-val").textContent = settings.maxTokens;
+      break;
+    case "reppen":
+      settings.repetitionPenalty = v;
+      document.getElementById("reppen-val").textContent = v.toFixed(2);
+      break;
+  }
+}
+
+// ===== Sidebar =====
+function toggleSidebar() {
+  const sidebar = document.getElementById("sidebar");
+  sidebar.classList.toggle("collapsed");
+}
+
+// ===== Typing Indicator =====
+function appendTypingIndicator() {
+  const container = document.getElementById("messages");
+  const emptyState = document.getElementById("empty-state");
+  if (emptyState) emptyState.style.display = "none";
+
+  const indicator = document.createElement("div");
+  indicator.id = "typing-indicator";
+  indicator.className = "message assistant";
+  indicator.innerHTML = `
+    <div class="avatar">&#129302;</div>
+    <div class="content">
+      <div class="role">ALM-1-Coder</div>
+      <div class="typing-indicator"><span></span><span></span><span></span></div>
+    </div>`;
+  container.appendChild(indicator);
+  scrollToBottom();
+}
+
+function removeTypingIndicator() {
+  const indicator = document.getElementById("typing-indicator");
+  if (indicator) indicator.remove();
+}
+
+// ===== Toast =====
+function showToast(message, type = "info") {
+  const container = document.getElementById("toast-container");
+  const toast = document.createElement("div");
+  toast.className = `toast ${type}`;
+  toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+// ===== Initialization =====
+function init() {
+  loadChats();
+  renderChatList();
+  renderMessages();
+  renderAgentRoster();
+
+  // Check mobile
+  if (window.innerWidth <= 768) {
+    document.getElementById("sidebar").classList.add("collapsed");
+  }
+
+  // Load Pyodide script
+  const script = document.createElement("script");
+  script.src = "https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js";
+  script.onload = () => initPyodide();
+  script.onerror = () => {
+    document.getElementById("load-status").textContent = "Pyodide CDN unavailable — running in demo mode";
+    document.getElementById("load-progress").style.width = "100%";
+    setTimeout(() => {
+      document.getElementById("loading-screen").classList.add("hidden");
+      document.getElementById("app").style.display = "flex";
+      showToast("Demo mode — Pyodide could not be loaded", "error");
+    }, 1500);
+  };
+  document.head.appendChild(script);
+
+  // Handle resize
+  window.addEventListener("resize", () => {
+    if (window.innerWidth > 768) {
+      document.getElementById("sidebar").classList.remove("collapsed");
+    }
+  });
+}
+
+// Start
+init();
+</script>
+</body>
+</html>

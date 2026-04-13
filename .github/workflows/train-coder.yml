@@ -1,0 +1,73 @@
+name: Train & Deploy ALM-1-Coder
+
+on:
+  workflow_dispatch:
+    inputs:
+      train_model:
+        description: "Train the model"
+        type: boolean
+        default: false
+  push:
+    branches:
+      - main
+
+jobs:
+  train:
+    name: Train ALM-1-Coder
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.train_model == 'true' }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install tiktoken
+
+      - name: Train model
+        run: cd ALM-1-Coder && python train.py --epochs 100
+
+      - name: Upload checkpoint artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-checkpoint
+          path: ALM-1-Coder/checkpoints/
+
+      - name: Upload numpy weights artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: numpy-weights
+          path: ALM-1-Coder/checkpoints/numpy_weights/
+
+  deploy:
+    name: Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: train
+    if: always()
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ALM-1-Coder/web/
+
+      - name: Deploy to Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
