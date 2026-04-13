@@ -3,66 +3,1078 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ALM-1 Adaptive Language Model</title>
+    <title>ALM - Adaptive Learning Model</title>
     <style>
-        :root { --primary: #3498db; --bg: #0f172a; --text: #f8fafc; --panel: #1e293b; }
-        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; height: 100vh; }
-        .sidebar { width: 260px; background: #020617; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
-        .main { flex: 1; display: flex; flex-direction: column; padding: 2rem; position: relative; }
-        .chat-container { flex: 1; overflow-y: auto; background: var(--panel); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; border: 1px solid #334155; }
-        .input-area { display: flex; gap: 0.75rem; }
-        input { flex: 1; background: #0f172a; border: 1px solid #334155; color: white; padding: 0.75rem 1rem; border-radius: 8px; outline: none; }
-        input:focus { border-color: var(--primary); }
-        button { background: var(--primary); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer; font-weight: 600; }
-        .msg { margin-bottom: 1rem; padding: 0.75rem; border-radius: 8px; }
-        .user-msg { background: #334155; align-self: flex-end; }
-        .alm-msg { background: #1e293b; border-left: 4px solid var(--primary); }
-        .badge { font-size: 0.7rem; text-transform: uppercase; background: var(--primary); padding: 2px 6px; border-radius: 4px; margin-bottom: 0.5rem; display: inline-block; }
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #818cf8;
+            --primary-glow: rgba(99, 102, 241, 0.3);
+            --bg: #0a0a0f;
+            --bg-secondary: #111118;
+            --bg-tertiary: #1a1a24;
+            --panel: #13131d;
+            --border: #2a2a3a;
+            --text: #e4e4ed;
+            --text-secondary: #9ca3af;
+            --text-dim: #6b7280;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --user-bg: #1e1b4b;
+            --assistant-bg: #13131d;
+            --code-bg: #0d1117;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            min-width: 280px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s;
+        }
+
+        .sidebar-header {
+            padding: 1.25rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--primary), #a855f7);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 0.9rem;
+            color: white;
+        }
+
+        .logo-text {
+            font-size: 1.1rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo-sub {
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .new-chat-btn {
+            width: 100%;
+            padding: 0.7rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .new-chat-btn:hover { background: var(--primary-hover); box-shadow: 0 0 20px var(--primary-glow); }
+
+        .search-box {
+            margin: 0.75rem 1.25rem;
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 0.55rem 0.75rem 0.55rem 2rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 8px;
+            font-size: 0.8rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .search-box input:focus { border-color: var(--primary); }
+
+        .search-box::before {
+            content: '🔍';
+            position: absolute;
+            left: 0.6rem;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.7rem;
+        }
+
+        .conversations-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem;
+        }
+
+        .conv-item {
+            padding: 0.7rem 0.75rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            transition: all 0.15s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2px;
+        }
+
+        .conv-item:hover { background: var(--bg-tertiary); color: var(--text); }
+        .conv-item.active { background: var(--primary); color: white; }
+        .conv-item .delete-btn { display: none; background: none; border: none; color: var(--error); cursor: pointer; font-size: 0.75rem; }
+        .conv-item:hover .delete-btn { display: block; }
+
+        .sidebar-footer {
+            padding: 1rem 1.25rem;
+            border-top: 1px solid var(--border);
+            font-size: 0.7rem;
+            color: var(--text-dim);
+        }
+
+        .model-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            background: var(--bg-tertiary);
+            padding: 0.3rem 0.6rem;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            color: var(--primary);
+        }
+
+        .model-badge .dot {
+            width: 6px;
+            height: 6px;
+            background: var(--success);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* Main Chat Area */
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            min-width: 0;
+        }
+
+        .chat-header {
+            padding: 0.8rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-secondary);
+        }
+
+        .chat-title {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .header-btn {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            transition: all 0.2s;
+        }
+
+        .header-btn:hover { border-color: var(--primary); color: var(--text); }
+
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem;
+            scroll-behavior: smooth;
+        }
+
+        .welcome-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            text-align: center;
+            opacity: 0.8;
+        }
+
+        .welcome-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .welcome-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--primary), #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .welcome-sub {
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            max-width: 400px;
+            line-height: 1.5;
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .quick-action {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            padding: 0.6rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+
+        .quick-action:hover { border-color: var(--primary); color: var(--text); }
+
+        /* Messages */
+        .msg {
+            margin-bottom: 1rem;
+            padding: 0.9rem 1rem;
+            border-radius: 10px;
+            max-width: 85%;
+            line-height: 1.6;
+            font-size: 0.88rem;
+            position: relative;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .user-msg {
+            background: var(--user-bg);
+            margin-left: auto;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+        }
+
+        .alm-msg {
+            background: var(--assistant-bg);
+            margin-right: auto;
+            border-left: 3px solid var(--primary);
+        }
+
+        .msg-role {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 0.4rem;
+            font-weight: 700;
+        }
+
+        .user-msg .msg-role { color: var(--primary); }
+        .alm-msg .msg-role { color: #a855f7; }
+
+        .msg-content { white-space: pre-wrap; word-break: break-word; }
+
+        .msg-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .msg:hover .msg-actions { opacity: 1; }
+
+        .msg-action-btn {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            cursor: pointer;
+            font-size: 0.7rem;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+        }
+
+        .msg-action-btn:hover { color: var(--text); background: var(--bg-tertiary); }
+
+        /* Input Area */
+        .input-area {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--border);
+            background: var(--bg-secondary);
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 0.75rem;
+            align-items: flex-end;
+        }
+
+        .input-box {
+            flex: 1;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 0.75rem 1rem;
+            border-radius: 10px;
+            font-size: 0.88rem;
+            font-family: inherit;
+            resize: none;
+            outline: none;
+            min-height: 44px;
+            max-height: 150px;
+            transition: border-color 0.2s;
+            line-height: 1.5;
+        }
+
+        .input-box:focus { border-color: var(--primary); }
+
+        .send-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.25rem;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .send-btn:hover { background: var(--primary-hover); box-shadow: 0 0 20px var(--primary-glow); }
+        .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .input-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 0.5rem;
+            font-size: 0.7rem;
+            color: var(--text-dim);
+        }
+
+        .mode-selector {
+            display: flex;
+            gap: 0.3rem;
+        }
+
+        .mode-btn {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            padding: 0.25rem 0.6rem;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.7rem;
+            transition: all 0.15s;
+        }
+
+        .mode-btn.active { border-color: var(--primary); color: var(--primary); background: rgba(99,102,241,0.1); }
+
+        /* Settings Panel */
+        .settings-panel {
+            position: absolute;
+            top: 0;
+            right: -340px;
+            width: 320px;
+            height: 100%;
+            background: var(--bg-secondary);
+            border-left: 1px solid var(--border);
+            padding: 1.5rem;
+            overflow-y: auto;
+            transition: right 0.3s;
+            z-index: 100;
+        }
+
+        .settings-panel.open { right: 0; }
+
+        .settings-title {
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .settings-close {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
+
+        .setting-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .setting-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 0.4rem;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .setting-value {
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            -webkit-appearance: none;
+            height: 4px;
+            background: var(--bg-tertiary);
+            border-radius: 2px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: var(--primary);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .setting-textarea {
+            width: 100%;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 0.6rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 60px;
+            outline: none;
+        }
+
+        .setting-textarea:focus { border-color: var(--primary); }
+
+        .setting-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .toggle {
+            width: 40px;
+            height: 22px;
+            background: var(--bg-tertiary);
+            border-radius: 11px;
+            cursor: pointer;
+            position: relative;
+            transition: background 0.2s;
+            border: 1px solid var(--border);
+        }
+
+        .toggle.active { background: var(--primary); border-color: var(--primary); }
+
+        .toggle::after {
+            content: '';
+            width: 16px;
+            height: 16px;
+            background: white;
+            border-radius: 50%;
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.2s;
+        }
+
+        .toggle.active::after { transform: translateX(18px); }
+
+        /* Mobile */
+        .mobile-toggle {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--text);
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                position: absolute;
+                z-index: 200;
+                transform: translateX(-100%);
+                height: 100%;
+            }
+            .sidebar.open { transform: translateX(0); }
+            .mobile-toggle { display: block; }
+            .msg { max-width: 95%; }
+        }
+
+        /* Typing indicator */
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 0.5rem 0;
+        }
+
+        .typing-dot {
+            width: 6px;
+            height: 6px;
+            background: var(--primary);
+            border-radius: 50%;
+            animation: typingBounce 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typingBounce {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-8px); }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+        /* Overlay for mobile */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 199;
+        }
+
+        .sidebar-overlay.show { display: block; }
     </style>
 </head>
 <body>
-    <div class="sidebar">
-        <h2>ALM-1</h2>
-        <label>Mode</label>
-        <select id="mode" style="width:100%; padding:0.5rem; background:#0f172a; color:white;">
-            <option value="chat">Chat</option>
-            <option value="search">Search Agent (RAG)</option>
-        </select>
-        <div style="font-size:0.8rem; margin-top:1rem;">Neural Engine: Active</div>
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <div class="logo-icon">A</div>
+                <div>
+                    <div class="logo-text">ALM</div>
+                    <div class="logo-sub">Adaptive Learning Model</div>
+                </div>
+            </div>
+            <button class="new-chat-btn" onclick="newConversation()">+ New Chat</button>
+        </div>
+        <div class="search-box">
+            <input type="text" placeholder="Search conversations..." oninput="searchConversations(this.value)">
+        </div>
+        <div class="conversations-list" id="convList"></div>
+        <div class="sidebar-footer">
+            <div class="model-badge">
+                <span class="dot"></span>
+                ALM-Tiny 7.8M - MoE Transformer
+            </div>
+        </div>
     </div>
+
+    <!-- Main -->
     <div class="main">
-        <div class="chat-container" id="chat">
-            <div class="msg alm-msg"><span class="badge">SYSTEM</span><br>ALM-1 Neural Core Ready. I learn from every interaction.</div>
+        <div class="chat-header">
+            <div style="display:flex;align-items:center;gap:0.75rem;">
+                <button class="mobile-toggle" onclick="toggleSidebar()">☰</button>
+                <span class="chat-title" id="chatTitle">ALM - Adaptive Learning Model</span>
+            </div>
+            <div class="header-actions">
+                <button class="header-btn" onclick="exportChat()">Export</button>
+                <button class="header-btn" onclick="toggleSettings()">Settings</button>
+            </div>
         </div>
+
+        <div class="chat-container" id="chatContainer">
+            <div class="welcome-screen" id="welcomeScreen">
+                <div class="welcome-icon">🧠</div>
+                <div class="welcome-title">Welcome to ALM</div>
+                <div class="welcome-sub">
+                    I'm the Adaptive Learning Model - an AI that learns and adapts from every interaction.
+                    Ask me anything about coding, science, or just chat!
+                </div>
+                <div class="quick-actions">
+                    <div class="quick-action" onclick="quickSend('What can you do?')">What can you do?</div>
+                    <div class="quick-action" onclick="quickSend('Write a Python function to reverse a string')">Code help</div>
+                    <div class="quick-action" onclick="quickSend('What is machine learning?')">Explain ML</div>
+                    <div class="quick-action" onclick="quickSend('Tell me about ALM')">About ALM</div>
+                </div>
+            </div>
+        </div>
+
         <div class="input-area">
-            <input type="text" id="prompt" placeholder="Ask ALM-1...">
-            <button onclick="send()">Send</button>
+            <div class="input-wrapper">
+                <textarea class="input-box" id="messageInput" placeholder="Ask ALM anything..." rows="1"
+                    onkeydown="handleKeyDown(event)" oninput="autoResize(this)"></textarea>
+                <button class="send-btn" id="sendBtn" onclick="sendMessage()">Send</button>
+            </div>
+            <div class="input-footer">
+                <div class="mode-selector">
+                    <button class="mode-btn active" data-mode="chat" onclick="setMode('chat', this)">Chat</button>
+                    <button class="mode-btn" data-mode="search" onclick="setMode('search', this)">Search (RAG)</button>
+                </div>
+                <span id="tokenInfo">ALM-Tiny | MoE Architecture</span>
+            </div>
+        </div>
+
+        <!-- Settings Panel -->
+        <div class="settings-panel" id="settingsPanel">
+            <div class="settings-title">
+                <span>Settings</span>
+                <button class="settings-close" onclick="toggleSettings()">&times;</button>
+            </div>
+
+            <div class="setting-group">
+                <div class="setting-label">
+                    <span>System Prompt</span>
+                </div>
+                <textarea class="setting-textarea" id="systemPrompt" placeholder="Custom system prompt..."
+                    onchange="updateSetting('system_prompt', this.value)">You are ALM, a helpful and adaptive AI assistant.</textarea>
+            </div>
+
+            <div class="setting-group">
+                <div class="setting-label">
+                    <span>Temperature</span>
+                    <span class="setting-value" id="tempValue">0.7</span>
+                </div>
+                <input type="range" min="0.1" max="2.0" step="0.1" value="0.7"
+                    oninput="updateSlider('temperature', this.value, 'tempValue')">
+            </div>
+
+            <div class="setting-group">
+                <div class="setting-label">
+                    <span>Top P</span>
+                    <span class="setting-value" id="topPValue">0.9</span>
+                </div>
+                <input type="range" min="0.1" max="1.0" step="0.05" value="0.9"
+                    oninput="updateSlider('top_p', this.value, 'topPValue')">
+            </div>
+
+            <div class="setting-group">
+                <div class="setting-label">
+                    <span>Max Tokens</span>
+                    <span class="setting-value" id="maxTokensValue">150</span>
+                </div>
+                <input type="range" min="20" max="256" step="10" value="150"
+                    oninput="updateSlider('max_tokens', this.value, 'maxTokensValue')">
+            </div>
+
+            <div class="setting-group">
+                <div class="setting-label">
+                    <span>Repetition Penalty</span>
+                    <span class="setting-value" id="repPenValue">1.3</span>
+                </div>
+                <input type="range" min="1.0" max="2.0" step="0.1" value="1.3"
+                    oninput="updateSlider('repetition_penalty', this.value, 'repPenValue')">
+            </div>
+
+            <div class="setting-group">
+                <div class="setting-label">
+                    <span>Top K</span>
+                    <span class="setting-value" id="topKValue">40</span>
+                </div>
+                <input type="range" min="1" max="100" step="1" value="40"
+                    oninput="updateSlider('top_k', this.value, 'topKValue')">
+            </div>
+
+            <div class="setting-group">
+                <div class="setting-toggle">
+                    <span style="font-size:0.75rem;font-weight:600;color:var(--text-secondary)">Streaming</span>
+                    <div class="toggle active" id="streamToggle" onclick="toggleStream()"></div>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <div class="setting-toggle">
+                    <span style="font-size:0.75rem;font-weight:600;color:var(--text-secondary)">Adaptive Learning</span>
+                    <div class="toggle active" id="learnToggle" onclick="toggleLearning()"></div>
+                </div>
+            </div>
         </div>
     </div>
+
     <script>
-        async function send() {
-            const prompt = document.getElementById("prompt").value;
-            const mode = document.getElementById("mode").value;
-            if (!prompt) return;
+        // State
+        let currentConvId = null;
+        let conversations = {};
+        let currentMode = 'chat';
+        let settings = {
+            temperature: 0.7,
+            top_p: 0.9,
+            max_tokens: 150,
+            repetition_penalty: 1.3,
+            top_k: 40,
+            stream: true,
+            adaptive_learning: true,
+            system_prompt: 'You are ALM, a helpful and adaptive AI assistant.'
+        };
+        let isGenerating = false;
 
-            const chat = document.getElementById("chat");
-            chat.innerHTML += `<div class="msg user-msg">You: ${prompt}</div>`;
+        // API base URL
+        const API_BASE = window.location.origin;
 
-            // Call local API (Only works when running via app.py)
-            try {
-                const res = await fetch('/api/chat', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({prompt, mode})
-                });
-                const data = await res.json();
-                chat.innerHTML += `<div class="msg alm-msg"><span class="badge">${mode.upper()}</span><br>ALM: ${data.response}</div>`;
-            } catch (e) {
-                // Fallback for static (GitHub Pages) mode
-                chat.innerHTML += `<div class="msg alm-msg"><span class="badge">STATIC</span><br>ALM: [Running in Static Mode. Neural API only available when cloned locally.]</div>`;
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadFromStorage();
+            if (Object.keys(conversations).length === 0) {
+                newConversation();
+            } else {
+                renderConvList();
+                const lastConv = Object.values(conversations).sort((a,b) => b.updated - a.updated)[0];
+                if (lastConv) switchConversation(lastConv.id);
             }
-            document.getElementById("prompt").value = "";
-            chat.scrollTop = chat.scrollHeight;
+        });
+
+        // Storage
+        function saveToStorage() {
+            try {
+                localStorage.setItem('alm_conversations', JSON.stringify(conversations));
+                localStorage.setItem('alm_settings', JSON.stringify(settings));
+            } catch(e) {}
+        }
+
+        function loadFromStorage() {
+            try {
+                const convs = localStorage.getItem('alm_conversations');
+                if (convs) conversations = JSON.parse(convs);
+                const sets = localStorage.getItem('alm_settings');
+                if (sets) settings = {...settings, ...JSON.parse(sets)};
+            } catch(e) {}
+        }
+
+        // Conversations
+        function newConversation() {
+            const id = 'conv_' + Date.now();
+            conversations[id] = {
+                id, title: 'New Chat', messages: [],
+                created: Date.now(), updated: Date.now()
+            };
+            saveToStorage();
+            switchConversation(id);
+            renderConvList();
+        }
+
+        function switchConversation(id) {
+            currentConvId = id;
+            renderConvList();
+            renderMessages();
+            const conv = conversations[id];
+            if (conv) document.getElementById('chatTitle').textContent = conv.title;
+        }
+
+        function deleteConversation(id, e) {
+            e.stopPropagation();
+            delete conversations[id];
+            saveToStorage();
+            if (currentConvId === id) {
+                const ids = Object.keys(conversations);
+                if (ids.length > 0) switchConversation(ids[0]);
+                else newConversation();
+            }
+            renderConvList();
+        }
+
+        function renderConvList() {
+            const list = document.getElementById('convList');
+            const sorted = Object.values(conversations).sort((a,b) => b.updated - a.updated);
+            list.innerHTML = sorted.map(c => `
+                <div class="conv-item ${c.id === currentConvId ? 'active' : ''}" onclick="switchConversation('${c.id}')">
+                    <span>${escapeHtml(c.title)}</span>
+                    <button class="delete-btn" onclick="deleteConversation('${c.id}', event)">&#10005;</button>
+                </div>
+            `).join('');
+        }
+
+        function searchConversations(query) {
+            const items = document.querySelectorAll('.conv-item');
+            items.forEach(item => {
+                const text = item.textContent.toLowerCase();
+                item.style.display = text.includes(query.toLowerCase()) ? '' : 'none';
+            });
+        }
+
+        // Messages
+        function renderMessages() {
+            const container = document.getElementById('chatContainer');
+            const conv = conversations[currentConvId];
+
+            if (!conv || conv.messages.length === 0) {
+                document.getElementById('welcomeScreen').style.display = 'flex';
+                container.innerHTML = '';
+                container.appendChild(document.getElementById('welcomeScreen') || createWelcomeScreen());
+                return;
+            }
+
+            const welcome = document.getElementById('welcomeScreen');
+            if (welcome) welcome.style.display = 'none';
+
+            container.innerHTML = conv.messages.map(m => createMessageHtml(m)).join('');
+            scrollToBottom();
+        }
+
+        function createMessageHtml(msg) {
+            const isUser = msg.role === 'user';
+            return `
+                <div class="msg ${isUser ? 'user-msg' : 'alm-msg'}">
+                    <div class="msg-role">${isUser ? 'YOU' : 'ALM'}</div>
+                    <div class="msg-content">${formatContent(msg.content)}</div>
+                    <div class="msg-actions">
+                        <button class="msg-action-btn" onclick="copyMessage(this, '${escapeAttr(msg.content)}')">Copy</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function formatContent(text) {
+            // Basic formatting
+            let formatted = escapeHtml(text);
+            // Code blocks
+            formatted = formatted.replace(/```(\w*)\n?([\s\S]*?)```/g, '<pre style="background:var(--code-bg);padding:0.75rem;border-radius:6px;overflow-x:auto;margin:0.5rem 0;font-size:0.8rem"><code>$2</code></pre>');
+            // Inline code
+            formatted = formatted.replace(/`([^`]+)`/g, '<code style="background:var(--code-bg);padding:0.15rem 0.4rem;border-radius:3px;font-size:0.82rem">$1</code>');
+            // Bold
+            formatted = formatted.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+            return formatted;
+        }
+
+        function addMessage(role, content) {
+            if (!conversations[currentConvId]) return;
+            const msg = { role, content, timestamp: Date.now() };
+            conversations[currentConvId].messages.push(msg);
+            conversations[currentConvId].updated = Date.now();
+
+            // Auto-title
+            if (conversations[currentConvId].messages.length === 1 && role === 'user') {
+                conversations[currentConvId].title = content.substring(0, 40) + (content.length > 40 ? '...' : '');
+                document.getElementById('chatTitle').textContent = conversations[currentConvId].title;
+                renderConvList();
+            }
+
+            saveToStorage();
+
+            const container = document.getElementById('chatContainer');
+            const welcome = document.getElementById('welcomeScreen');
+            if (welcome) welcome.style.display = 'none';
+
+            container.insertAdjacentHTML('beforeend', createMessageHtml(msg));
+            scrollToBottom();
+        }
+
+        // Send message
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const text = input.value.trim();
+            if (!text || isGenerating) return;
+
+            input.value = '';
+            autoResize(input);
+            addMessage('user', text);
+            isGenerating = true;
+            document.getElementById('sendBtn').disabled = true;
+
+            // Show typing indicator
+            const container = document.getElementById('chatContainer');
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'msg alm-msg';
+            typingDiv.id = 'typingIndicator';
+            typingDiv.innerHTML = '<div class="msg-role">ALM</div><div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>';
+            container.appendChild(typingDiv);
+            scrollToBottom();
+
+            try {
+                const response = await fetch(`${API_BASE}/api/chat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        prompt: text,
+                        conversation_id: currentConvId,
+                        mode: currentMode,
+                        temperature: settings.temperature,
+                        top_p: settings.top_p,
+                        top_k: settings.top_k,
+                        max_tokens: settings.max_tokens,
+                        repetition_penalty: settings.repetition_penalty
+                    })
+                });
+
+                const data = await response.json();
+
+                // Remove typing indicator
+                const ti = document.getElementById('typingIndicator');
+                if (ti) ti.remove();
+
+                if (data.response) {
+                    addMessage('assistant', data.response);
+                } else if (data.error) {
+                    addMessage('assistant', `Error: ${data.error}`);
+                }
+            } catch (e) {
+                const ti = document.getElementById('typingIndicator');
+                if (ti) ti.remove();
+
+                // Fallback: static mode response
+                addMessage('assistant', 'I\'m currently running in static mode. To get full AI responses, clone this repo and run `python app.py` locally. I\'m ALM - the Adaptive Learning Model with a Mixture of Experts architecture. I can help with coding, explanations, and conversation!');
+            }
+
+            isGenerating = false;
+            document.getElementById('sendBtn').disabled = false;
+            input.focus();
+        }
+
+        function quickSend(text) {
+            document.getElementById('messageInput').value = text;
+            sendMessage();
+        }
+
+        // UI Helpers
+        function handleKeyDown(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        }
+
+        function autoResize(el) {
+            el.style.height = 'auto';
+            el.style.height = Math.min(el.scrollHeight, 150) + 'px';
+        }
+
+        function scrollToBottom() {
+            const container = document.getElementById('chatContainer');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function setMode(mode, btn) {
+            currentMode = mode;
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+            document.getElementById('sidebarOverlay').classList.toggle('show');
+        }
+
+        function toggleSettings() {
+            document.getElementById('settingsPanel').classList.toggle('open');
+        }
+
+        function updateSlider(key, value, displayId) {
+            settings[key] = parseFloat(value);
+            document.getElementById(displayId).textContent = value;
+            saveToStorage();
+        }
+
+        function updateSetting(key, value) {
+            settings[key] = value;
+            saveToStorage();
+        }
+
+        function toggleStream() {
+            settings.stream = !settings.stream;
+            document.getElementById('streamToggle').classList.toggle('active');
+            saveToStorage();
+        }
+
+        function toggleLearning() {
+            settings.adaptive_learning = !settings.adaptive_learning;
+            document.getElementById('learnToggle').classList.toggle('active');
+            saveToStorage();
+        }
+
+        function copyMessage(btn, text) {
+            navigator.clipboard.writeText(text.replace(/&#39;/g, "'")).then(() => {
+                btn.textContent = 'Copied!';
+                setTimeout(() => btn.textContent = 'Copy', 1500);
+            });
+        }
+
+        function exportChat() {
+            const conv = conversations[currentConvId];
+            if (!conv) return;
+            const text = conv.messages.map(m => `${m.role === 'user' ? 'You' : 'ALM'}: ${m.content}`).join('\n\n');
+            const blob = new Blob([text], { type: 'text/plain' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `alm-chat-${conv.title.replace(/\s+/g, '-')}.txt`;
+            a.click();
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function escapeAttr(str) {
+            return str.replace(/'/g, '&#39;').replace(/"/g, '&quot;').replace(/\n/g, '\\n');
         }
     </script>
 </body>
