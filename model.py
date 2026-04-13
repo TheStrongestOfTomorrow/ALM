@@ -38,8 +38,8 @@ def get_alm_1_config():
 
 def get_alm_tiny_config():
     """ALM-Tiny: Lightweight version for training and deployment."""
-    return ALMConfig(n_layer=4, n_head=4, n_embd=128, vocab_size=50257,
-                     block_size=256, n_experts=2, top_k_experts=2, dropout=0.1)
+    return ALMConfig(n_layer=6, n_head=6, n_embd=192, vocab_size=50257,
+                     block_size=384, n_experts=2, top_k_experts=2, dropout=0.1)
 
 
 def get_alm_small_config():

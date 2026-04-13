@@ -30,7 +30,7 @@ def train():
     print(f"Config: {config.n_layer} layers, {config.n_head} heads, "
           f"{config.n_embd} emb, {config.n_experts} experts, {config.block_size} ctx")
 
-    # Initialize model - try to resume from checkpoint
+    # Initialize model - resume from best checkpoint
     checkpoint_path = os.path.join(os.path.dirname(__file__), 'checkpoints', 'alm_tiny_best.pt')
     if os.path.exists(checkpoint_path):
         print(f"Resuming from checkpoint: {checkpoint_path}")
@@ -65,7 +65,7 @@ def train():
     optimizer = torch.optim.AdamW(model.parameters(), lr=3e-4, weight_decay=0.01,
                                    betas=(0.9, 0.95))
 
-    num_epochs = 200
+    num_epochs = 150
     best_loss = float('inf')
     checkpoint_dir = os.path.join(os.path.dirname(__file__), 'checkpoints')
     os.makedirs(checkpoint_dir, exist_ok=True)
