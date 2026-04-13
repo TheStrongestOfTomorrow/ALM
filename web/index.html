@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ALM - Adaptive Learning Model</title>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"></script>
     <style>
         :root {
             --primary: #6366f1;
@@ -126,7 +127,7 @@
         .search-box input:focus { border-color: var(--primary); }
 
         .search-box::before {
-            content: '🔍';
+            content: '\1F50D';
             position: absolute;
             left: 0.6rem;
             top: 50%;
@@ -179,9 +180,18 @@
         .model-badge .dot {
             width: 6px;
             height: 6px;
-            background: var(--success);
             border-radius: 50%;
+            background: var(--text-dim);
+        }
+
+        .model-badge .dot.online {
+            background: var(--success);
             animation: pulse 2s infinite;
+        }
+
+        .model-badge .dot.loading {
+            background: var(--warning);
+            animation: pulse 0.8s infinite;
         }
 
         @keyframes pulse {
@@ -237,6 +247,61 @@
             scroll-behavior: smooth;
         }
 
+        /* Loading Screen */
+        .loading-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            text-align: center;
+        }
+
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 3px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1.5rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .loading-status {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            max-width: 400px;
+            line-height: 1.5;
+        }
+
+        .loading-progress {
+            margin-top: 1rem;
+            width: 300px;
+            height: 4px;
+            background: var(--bg-tertiary);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .loading-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), #a855f7);
+            border-radius: 2px;
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        /* Welcome */
         .welcome-screen {
             display: flex;
             flex-direction: column;
@@ -247,10 +312,7 @@
             opacity: 0.8;
         }
 
-        .welcome-icon {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-        }
+        .welcome-icon { font-size: 3rem; margin-bottom: 1rem; }
 
         .welcome-title {
             font-size: 1.5rem;
@@ -461,9 +523,7 @@
             font-size: 1.2rem;
         }
 
-        .setting-group {
-            margin-bottom: 1.25rem;
-        }
+        .setting-group { margin-bottom: 1.25rem; }
 
         .setting-label {
             font-size: 0.75rem;
@@ -474,10 +534,7 @@
             justify-content: space-between;
         }
 
-        .setting-value {
-            color: var(--primary);
-            font-weight: 700;
-        }
+        .setting-value { color: var(--primary); font-weight: 700; }
 
         input[type="range"] {
             width: 100%;
@@ -597,14 +654,11 @@
         ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
 
-        /* Overlay for mobile */
         .sidebar-overlay {
             display: none;
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
             background: rgba(0,0,0,0.5);
             z-index: 199;
         }
@@ -633,8 +687,8 @@
         <div class="conversations-list" id="convList"></div>
         <div class="sidebar-footer">
             <div class="model-badge">
-                <span class="dot"></span>
-                ALM-Tiny 7.8M - MoE Transformer
+                <span class="dot" id="statusDot"></span>
+                <span id="statusText">Initializing...</span>
             </div>
         </div>
     </div>
@@ -643,7 +697,7 @@
     <div class="main">
         <div class="chat-header">
             <div style="display:flex;align-items:center;gap:0.75rem;">
-                <button class="mobile-toggle" onclick="toggleSidebar()">☰</button>
+                <button class="mobile-toggle" onclick="toggleSidebar()">&#9776;</button>
                 <span class="chat-title" id="chatTitle">ALM - Adaptive Learning Model</span>
             </div>
             <div class="header-actions">
@@ -653,18 +707,13 @@
         </div>
 
         <div class="chat-container" id="chatContainer">
-            <div class="welcome-screen" id="welcomeScreen">
-                <div class="welcome-icon">🧠</div>
-                <div class="welcome-title">Welcome to ALM</div>
-                <div class="welcome-sub">
-                    I'm the Adaptive Learning Model - an AI that learns and adapts from every interaction.
-                    Ask me anything about coding, science, or just chat!
-                </div>
-                <div class="quick-actions">
-                    <div class="quick-action" onclick="quickSend('What can you do?')">What can you do?</div>
-                    <div class="quick-action" onclick="quickSend('Write a Python function to reverse a string')">Code help</div>
-                    <div class="quick-action" onclick="quickSend('What is machine learning?')">Explain ML</div>
-                    <div class="quick-action" onclick="quickSend('Tell me about ALM')">About ALM</div>
+            <!-- Loading Screen -->
+            <div class="loading-screen" id="loadingScreen">
+                <div class="loading-spinner"></div>
+                <div class="loading-title">Loading ALM Neural Engine</div>
+                <div class="loading-status" id="loadingStatus">Initializing Pyodide (Python in browser)...</div>
+                <div class="loading-progress">
+                    <div class="loading-progress-bar" id="loadingBar"></div>
                 </div>
             </div>
         </div>
@@ -673,14 +722,14 @@
             <div class="input-wrapper">
                 <textarea class="input-box" id="messageInput" placeholder="Ask ALM anything..." rows="1"
                     onkeydown="handleKeyDown(event)" oninput="autoResize(this)"></textarea>
-                <button class="send-btn" id="sendBtn" onclick="sendMessage()">Send</button>
+                <button class="send-btn" id="sendBtn" onclick="sendMessage()" disabled>Send</button>
             </div>
             <div class="input-footer">
                 <div class="mode-selector">
                     <button class="mode-btn active" data-mode="chat" onclick="setMode('chat', this)">Chat</button>
                     <button class="mode-btn" data-mode="search" onclick="setMode('search', this)">Search (RAG)</button>
                 </div>
-                <span id="tokenInfo">ALM-Tiny | MoE Architecture</span>
+                <span id="tokenInfo">Runs in your browser via Pyodide</span>
             </div>
         </div>
 
@@ -690,248 +739,234 @@
                 <span>Settings</span>
                 <button class="settings-close" onclick="toggleSettings()">&times;</button>
             </div>
-
             <div class="setting-group">
-                <div class="setting-label">
-                    <span>System Prompt</span>
-                </div>
-                <textarea class="setting-textarea" id="systemPrompt" placeholder="Custom system prompt..."
-                    onchange="updateSetting('system_prompt', this.value)">You are ALM, a helpful and adaptive AI assistant.</textarea>
+                <div class="setting-label"><span>System Prompt</span></div>
+                <textarea class="setting-textarea" id="systemPrompt"
+                    placeholder="Custom system prompt...">You are ALM, a helpful and adaptive AI assistant.</textarea>
             </div>
-
             <div class="setting-group">
-                <div class="setting-label">
-                    <span>Temperature</span>
-                    <span class="setting-value" id="tempValue">0.7</span>
-                </div>
+                <div class="setting-label"><span>Temperature</span><span class="setting-value" id="tempValue">0.7</span></div>
                 <input type="range" min="0.1" max="2.0" step="0.1" value="0.7"
-                    oninput="updateSlider('temperature', this.value, 'tempValue')">
+                    oninput="settings.temperature=parseFloat(this.value);document.getElementById('tempValue').textContent=this.value">
             </div>
-
             <div class="setting-group">
-                <div class="setting-label">
-                    <span>Top P</span>
-                    <span class="setting-value" id="topPValue">0.9</span>
-                </div>
+                <div class="setting-label"><span>Top P</span><span class="setting-value" id="topPValue">0.9</span></div>
                 <input type="range" min="0.1" max="1.0" step="0.05" value="0.9"
-                    oninput="updateSlider('top_p', this.value, 'topPValue')">
+                    oninput="settings.top_p=parseFloat(this.value);document.getElementById('topPValue').textContent=this.value">
             </div>
-
             <div class="setting-group">
-                <div class="setting-label">
-                    <span>Max Tokens</span>
-                    <span class="setting-value" id="maxTokensValue">150</span>
-                </div>
-                <input type="range" min="20" max="256" step="10" value="150"
-                    oninput="updateSlider('max_tokens', this.value, 'maxTokensValue')">
+                <div class="setting-label"><span>Max Tokens</span><span class="setting-value" id="maxTokensValue">100</span></div>
+                <input type="range" min="20" max="200" step="10" value="100"
+                    oninput="settings.max_tokens=parseInt(this.value);document.getElementById('maxTokensValue').textContent=this.value">
             </div>
-
             <div class="setting-group">
-                <div class="setting-label">
-                    <span>Repetition Penalty</span>
-                    <span class="setting-value" id="repPenValue">1.3</span>
-                </div>
+                <div class="setting-label"><span>Repetition Penalty</span><span class="setting-value" id="repPenValue">1.3</span></div>
                 <input type="range" min="1.0" max="2.0" step="0.1" value="1.3"
-                    oninput="updateSlider('repetition_penalty', this.value, 'repPenValue')">
+                    oninput="settings.repetition_penalty=parseFloat(this.value);document.getElementById('repPenValue').textContent=this.value">
             </div>
-
             <div class="setting-group">
-                <div class="setting-label">
-                    <span>Top K</span>
-                    <span class="setting-value" id="topKValue">40</span>
-                </div>
+                <div class="setting-label"><span>Top K</span><span class="setting-value" id="topKValue">40</span></div>
                 <input type="range" min="1" max="100" step="1" value="40"
-                    oninput="updateSlider('top_k', this.value, 'topKValue')">
-            </div>
-
-            <div class="setting-group">
-                <div class="setting-toggle">
-                    <span style="font-size:0.75rem;font-weight:600;color:var(--text-secondary)">Streaming</span>
-                    <div class="toggle active" id="streamToggle" onclick="toggleStream()"></div>
-                </div>
-            </div>
-
-            <div class="setting-group">
-                <div class="setting-toggle">
-                    <span style="font-size:0.75rem;font-weight:600;color:var(--text-secondary)">Adaptive Learning</span>
-                    <div class="toggle active" id="learnToggle" onclick="toggleLearning()"></div>
-                </div>
+                    oninput="settings.top_k=parseInt(this.value);document.getElementById('topKValue').textContent=this.value">
             </div>
         </div>
     </div>
 
     <script>
-        // State
+        // ===== GPT-2 BPE Tokenizer (JS implementation for browser) =====
+        const GPT2_ENCODINGS = {
+            // We'll initialize this from Pyodide
+        };
+
+        // ===== State =====
+        let pyodide = null;
+        let modelReady = false;
+        let isGenerating = false;
         let currentConvId = null;
         let conversations = {};
         let currentMode = 'chat';
         let settings = {
             temperature: 0.7,
             top_p: 0.9,
-            max_tokens: 150,
+            max_tokens: 100,
             repetition_penalty: 1.3,
-            top_k: 40,
-            stream: true,
-            adaptive_learning: true,
-            system_prompt: 'You are ALM, a helpful and adaptive AI assistant.'
+            top_k: 40
         };
-        let isGenerating = false;
 
-        // API base URL
-        const API_BASE = window.location.origin;
-
-        // Initialize
-        document.addEventListener('DOMContentLoaded', () => {
-            loadFromStorage();
-            if (Object.keys(conversations).length === 0) {
-                newConversation();
-            } else {
-                renderConvList();
-                const lastConv = Object.values(conversations).sort((a,b) => b.updated - a.updated)[0];
-                if (lastConv) switchConversation(lastConv.id);
-            }
-        });
-
-        // Storage
-        function saveToStorage() {
+        // ===== Pyodide Initialization =====
+        async function initPyodide() {
             try {
-                localStorage.setItem('alm_conversations', JSON.stringify(conversations));
-                localStorage.setItem('alm_settings', JSON.stringify(settings));
-            } catch(e) {}
-        }
+                updateLoading('Loading Pyodide runtime...', 10);
+                pyodide = await loadPyodide({
+                    indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.25.1/full/'
+                });
 
-        function loadFromStorage() {
-            try {
-                const convs = localStorage.getItem('alm_conversations');
-                if (convs) conversations = JSON.parse(convs);
-                const sets = localStorage.getItem('alm_settings');
-                if (sets) settings = {...settings, ...JSON.parse(sets)};
-            } catch(e) {}
-        }
+                updateLoading('Installing NumPy...', 30);
+                await pyodide.loadPackage('numpy');
 
-        // Conversations
-        function newConversation() {
-            const id = 'conv_' + Date.now();
-            conversations[id] = {
-                id, title: 'New Chat', messages: [],
-                created: Date.now(), updated: Date.now()
-            };
-            saveToStorage();
-            switchConversation(id);
-            renderConvList();
-        }
+                updateLoading('Loading ALM inference engine...', 50);
+                // Load the inference Python module
+                const inferenceResp = await fetch('inference.py');
+                const inferenceCode = await inferenceResp.text();
+                await pyodide.runPythonAsync(inferenceCode);
 
-        function switchConversation(id) {
-            currentConvId = id;
-            renderConvList();
-            renderMessages();
-            const conv = conversations[id];
-            if (conv) document.getElementById('chatTitle').textContent = conv.title;
-        }
+                updateLoading('Downloading ALM weights (49 MB)...', 60);
+                // Initialize the model in Python
+                await pyodide.runPythonAsync(`
+import sys
+sys.stdout.write = lambda x: None  # Suppress print output
+alm_model = ALMInference('alm_weights.npz', 'alm_config.json')
+print = lambda *a: None  # Suppress further prints
+`);
 
-        function deleteConversation(id, e) {
-            e.stopPropagation();
-            delete conversations[id];
-            saveToStorage();
-            if (currentConvId === id) {
-                const ids = Object.keys(conversations);
-                if (ids.length > 0) switchConversation(ids[0]);
-                else newConversation();
+                updateLoading('Loading tokenizer...', 85);
+                // Set up tokenizer in Python using a simple approach
+                await pyodide.runPythonAsync(`
+import json
+
+# Simple GPT-2 tokenizer using tiktoken-like approach
+# We'll use a basic byte-level approach for the browser
+class SimpleTokenizer:
+    def __init__(self):
+        # Load the GPT-2 BPE ranks
+        # For now, use a simple character/word level approach
+        # that maps to tiktoken-compatible token IDs
+        self.byte_encoder = self._bytes_to_unicode()
+        self.byte_decoder = {v: k for k, v in self.byte_encoder.items()}
+        self.encoder = {}
+        self.decoder = {}
+        self._load_vocab()
+
+    def _bytes_to_unicode(self):
+        bs = list(range(ord('!'), ord('~')+1)) + list(range(ord('A'), ord('z')+1)) + list(range(ord('0'), ord('9')+1)) + [ord(' ')] + [10, 13]
+        cs = bs[:]
+        n = 0
+        for b in range(256):
+            if b not in bs:
+                bs.append(b)
+                cs.append(256 + n)
+                n += 1
+        return dict(zip(bs, [chr(c) for c in cs]))
+
+    def _load_vocab(self):
+        try:
+            # Try loading a pre-built vocab
+            with open('gpt2_vocab.json', 'r') as f:
+                self.encoder = json.load(f)
+                self.decoder = {v: k for k, v in self.encoder.items()}
+        except:
+            # Fallback: simple byte-level encoding
+            # Map each byte to a token ID (not perfect but functional)
+            for i in range(256):
+                char = self.byte_encoder.get(i, chr(i))
+                self.encoder[char] = i
+                self.decoder[i] = char
+
+    def encode(self, text):
+        # Use tiktoken if available, otherwise simple encoding
+        try:
+            import tiktoken
+            enc = tiktoken.get_encoding('gpt2')
+            return enc.encode(text)
+        except:
+            # Simple fallback: character-level with GPT-2 compatible IDs
+            tokens = []
+            for char in text:
+                byte_val = ord(char)
+                if byte_val in self.byte_encoder:
+                    mapped = self.byte_encoder[byte_val]
+                    if mapped in self.encoder:
+                        tokens.append(self.encoder[mapped])
+                    else:
+                        tokens.append(byte_val)
+                else:
+                    tokens.append(byte_val % self.vocab_size)
+            return tokens if tokens else [0]
+
+    def decode(self, token_ids):
+        try:
+            import tiktoken
+            enc = tiktoken.get_encoding('gpt2')
+            return enc.decode(token_ids)
+        except:
+            # Simple fallback
+            chars = []
+            for tid in token_ids:
+                if tid in self.decoder:
+                    chars.append(self.decoder[tid])
+                elif tid < 256:
+                    chars.append(chr(tid))
+            return ''.join(chars)
+
+tokenizer = SimpleTokenizer()
+`);
+
+                // Try to load tiktoken in Pyodide for proper tokenization
+                try {
+                    await pyodide.loadPackage('micropip');
+                    await pyodide.runPythonAsync(`
+import micropip
+try:
+    await micropip.install('tiktoken')
+    print('tiktoken loaded!')
+except:
+    print('tiktoken not available, using fallback tokenizer')
+`);
+                } catch(e) {
+                    console.log('micropip not available, using fallback');
+                }
+
+                updateLoading('ALM ready!', 100);
+                modelReady = true;
+
+                // Update UI
+                document.getElementById('sendBtn').disabled = false;
+                document.getElementById('statusDot').className = 'dot online';
+                document.getElementById('statusText').textContent = 'ALM Online - Pyodide';
+
+                // Show welcome screen
+                setTimeout(() => {
+                    showWelcome();
+                }, 500);
+
+            } catch (error) {
+                console.error('Pyodide init error:', error);
+                updateLoading('Error loading ALM: ' + error.message, 0);
+                document.getElementById('statusDot').className = 'dot';
+                document.getElementById('statusText').textContent = 'Error - Check console';
             }
-            renderConvList();
         }
 
-        function renderConvList() {
-            const list = document.getElementById('convList');
-            const sorted = Object.values(conversations).sort((a,b) => b.updated - a.updated);
-            list.innerHTML = sorted.map(c => `
-                <div class="conv-item ${c.id === currentConvId ? 'active' : ''}" onclick="switchConversation('${c.id}')">
-                    <span>${escapeHtml(c.title)}</span>
-                    <button class="delete-btn" onclick="deleteConversation('${c.id}', event)">&#10005;</button>
-                </div>
-            `).join('');
+        function updateLoading(text, percent) {
+            document.getElementById('loadingStatus').textContent = text;
+            document.getElementById('loadingBar').style.width = percent + '%';
         }
 
-        function searchConversations(query) {
-            const items = document.querySelectorAll('.conv-item');
-            items.forEach(item => {
-                const text = item.textContent.toLowerCase();
-                item.style.display = text.includes(query.toLowerCase()) ? '' : 'none';
-            });
-        }
-
-        // Messages
-        function renderMessages() {
+        function showWelcome() {
             const container = document.getElementById('chatContainer');
-            const conv = conversations[currentConvId];
-
-            if (!conv || conv.messages.length === 0) {
-                document.getElementById('welcomeScreen').style.display = 'flex';
-                container.innerHTML = '';
-                container.appendChild(document.getElementById('welcomeScreen') || createWelcomeScreen());
-                return;
-            }
-
-            const welcome = document.getElementById('welcomeScreen');
-            if (welcome) welcome.style.display = 'none';
-
-            container.innerHTML = conv.messages.map(m => createMessageHtml(m)).join('');
-            scrollToBottom();
-        }
-
-        function createMessageHtml(msg) {
-            const isUser = msg.role === 'user';
-            return `
-                <div class="msg ${isUser ? 'user-msg' : 'alm-msg'}">
-                    <div class="msg-role">${isUser ? 'YOU' : 'ALM'}</div>
-                    <div class="msg-content">${formatContent(msg.content)}</div>
-                    <div class="msg-actions">
-                        <button class="msg-action-btn" onclick="copyMessage(this, '${escapeAttr(msg.content)}')">Copy</button>
+            container.innerHTML = `
+                <div class="welcome-screen">
+                    <div class="welcome-icon">&#129504;</div>
+                    <div class="welcome-title">Welcome to ALM</div>
+                    <div class="welcome-sub">
+                        I'm the Adaptive Learning Model - running entirely in your browser via Pyodide!
+                        No server needed. Ask me anything about coding, science, or just chat.
+                    </div>
+                    <div class="quick-actions">
+                        <div class="quick-action" onclick="quickSend('What can you do?')">What can you do?</div>
+                        <div class="quick-action" onclick="quickSend('Write a Python function')">Code help</div>
+                        <div class="quick-action" onclick="quickSend('What is machine learning?')">Explain ML</div>
+                        <div class="quick-action" onclick="quickSend('Tell me about ALM')">About ALM</div>
                     </div>
                 </div>
             `;
         }
 
-        function formatContent(text) {
-            // Basic formatting
-            let formatted = escapeHtml(text);
-            // Code blocks
-            formatted = formatted.replace(/```(\w*)\n?([\s\S]*?)```/g, '<pre style="background:var(--code-bg);padding:0.75rem;border-radius:6px;overflow-x:auto;margin:0.5rem 0;font-size:0.8rem"><code>$2</code></pre>');
-            // Inline code
-            formatted = formatted.replace(/`([^`]+)`/g, '<code style="background:var(--code-bg);padding:0.15rem 0.4rem;border-radius:3px;font-size:0.82rem">$1</code>');
-            // Bold
-            formatted = formatted.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-            return formatted;
-        }
-
-        function addMessage(role, content) {
-            if (!conversations[currentConvId]) return;
-            const msg = { role, content, timestamp: Date.now() };
-            conversations[currentConvId].messages.push(msg);
-            conversations[currentConvId].updated = Date.now();
-
-            // Auto-title
-            if (conversations[currentConvId].messages.length === 1 && role === 'user') {
-                conversations[currentConvId].title = content.substring(0, 40) + (content.length > 40 ? '...' : '');
-                document.getElementById('chatTitle').textContent = conversations[currentConvId].title;
-                renderConvList();
-            }
-
-            saveToStorage();
-
-            const container = document.getElementById('chatContainer');
-            const welcome = document.getElementById('welcomeScreen');
-            if (welcome) welcome.style.display = 'none';
-
-            container.insertAdjacentHTML('beforeend', createMessageHtml(msg));
-            scrollToBottom();
-        }
-
-        // Send message
+        // ===== Chat Functions =====
         async function sendMessage() {
             const input = document.getElementById('messageInput');
             const text = input.value.trim();
-            if (!text || isGenerating) return;
+            if (!text || isGenerating || !modelReady) return;
 
             input.value = '';
             autoResize(input);
@@ -949,38 +984,47 @@
             scrollToBottom();
 
             try {
-                const response = await fetch(`${API_BASE}/api/chat`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        prompt: text,
-                        conversation_id: currentConvId,
-                        mode: currentMode,
-                        temperature: settings.temperature,
-                        top_p: settings.top_p,
-                        top_k: settings.top_k,
-                        max_tokens: settings.max_tokens,
-                        repetition_penalty: settings.repetition_penalty
-                    })
-                });
+                // Encode the prompt
+                const encodeResult = await pyodide.runPythonAsync(`
+tokenizer.encode('${text.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')
+`);
+                const tokens = encodeResult.toJs();
 
-                const data = await response.json();
+                // Generate response
+                const genResult = await pyodide.runPythonAsync(`
+import numpy as np
+output = alm_model.generate(
+    [${Array.from(tokens).join(',')}],
+    max_new_tokens=${settings.max_tokens},
+    temperature=${settings.temperature},
+    top_k=${settings.top_k},
+    repetition_penalty=${settings.repetition_penalty}
+)
+list(output)
+`);
+                const outputTokens = genResult.toJs();
+                const inputLen = tokens.length;
+
+                // Decode response
+                const responseTokens = Array.from(outputTokens).slice(inputLen);
+                const decodeResult = await pyodide.runPythonAsync(`
+tokenizer.decode([${responseTokens.join(',')}])
+`);
+                let response = decodeResult;
+                // Clean up special tokens
+                response = response.replace(/<\|assistant\|>/g, '').replace(/<\|end\|>/g, '').trim();
 
                 // Remove typing indicator
                 const ti = document.getElementById('typingIndicator');
                 if (ti) ti.remove();
 
-                if (data.response) {
-                    addMessage('assistant', data.response);
-                } else if (data.error) {
-                    addMessage('assistant', `Error: ${data.error}`);
-                }
-            } catch (e) {
+                addMessage('assistant', response || 'I processed your request but generated an empty response. Try again!');
+
+            } catch (error) {
+                console.error('Generation error:', error);
                 const ti = document.getElementById('typingIndicator');
                 if (ti) ti.remove();
-
-                // Fallback: static mode response
-                addMessage('assistant', 'I\'m currently running in static mode. To get full AI responses, clone this repo and run `python app.py` locally. I\'m ALM - the Adaptive Learning Model with a Mixture of Experts architecture. I can help with coding, explanations, and conversation!');
+                addMessage('assistant', 'Error generating response: ' + error.message);
             }
 
             isGenerating = false;
@@ -993,12 +1037,113 @@
             sendMessage();
         }
 
-        // UI Helpers
-        function handleKeyDown(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
+        // ===== Conversation Management =====
+        function newConversation() {
+            const id = 'conv_' + Date.now();
+            conversations[id] = { id, title: 'New Chat', messages: [], created: Date.now(), updated: Date.now() };
+            saveToStorage();
+            switchConversation(id);
+            renderConvList();
+        }
+
+        function switchConversation(id) {
+            currentConvId = id;
+            renderConvList();
+            renderMessages();
+            if (conversations[id]) {
+                document.getElementById('chatTitle').textContent = conversations[id].title;
             }
+        }
+
+        function deleteConversation(id, e) {
+            e.stopPropagation();
+            delete conversations[id];
+            saveToStorage();
+            if (currentConvId === id) {
+                const ids = Object.keys(conversations);
+                if (ids.length > 0) switchConversation(ids[0]);
+                else newConversation();
+            }
+            renderConvList();
+        }
+
+        function renderConvList() {
+            const list = document.getElementById('convList');
+            const sorted = Object.values(conversations).sort((a, b) => b.updated - a.updated);
+            list.innerHTML = sorted.map(c => `
+                <div class="conv-item ${c.id === currentConvId ? 'active' : ''}" onclick="switchConversation('${c.id}')">
+                    <span>${escapeHtml(c.title)}</span>
+                    <button class="delete-btn" onclick="deleteConversation('${c.id}', event)">&#10005;</button>
+                </div>
+            `).join('');
+        }
+
+        function searchConversations(query) {
+            document.querySelectorAll('.conv-item').forEach(item => {
+                item.style.display = item.textContent.toLowerCase().includes(query.toLowerCase()) ? '' : 'none';
+            });
+        }
+
+        function addMessage(role, content) {
+            if (!conversations[currentConvId]) return;
+            const msg = { role, content, timestamp: Date.now() };
+            conversations[currentConvId].messages.push(msg);
+            conversations[currentConvId].updated = Date.now();
+
+            if (conversations[currentConvId].messages.length === 1 && role === 'user') {
+                conversations[currentConvId].title = content.substring(0, 40) + (content.length > 40 ? '...' : '');
+                document.getElementById('chatTitle').textContent = conversations[currentConvId].title;
+                renderConvList();
+            }
+
+            saveToStorage();
+
+            const container = document.getElementById('chatContainer');
+            // Remove welcome screen if present
+            const welcome = container.querySelector('.welcome-screen');
+            if (welcome) welcome.remove();
+
+            container.insertAdjacentHTML('beforeend', createMessageHtml(msg));
+            scrollToBottom();
+        }
+
+        function renderMessages() {
+            const container = document.getElementById('chatContainer');
+            const conv = conversations[currentConvId];
+
+            if (!conv || conv.messages.length === 0) {
+                if (modelReady) showWelcome();
+                return;
+            }
+
+            container.innerHTML = conv.messages.map(m => createMessageHtml(m)).join('');
+            scrollToBottom();
+        }
+
+        function createMessageHtml(msg) {
+            const isUser = msg.role === 'user';
+            return `
+                <div class="msg ${isUser ? 'user-msg' : 'alm-msg'}">
+                    <div class="msg-role">${isUser ? 'YOU' : 'ALM'}</div>
+                    <div class="msg-content">${formatContent(msg.content)}</div>
+                    <div class="msg-actions">
+                        <button class="msg-action-btn" onclick="copyMsg(this)">Copy</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function formatContent(text) {
+            let f = escapeHtml(text);
+            f = f.replace(/\`\`\`(\w*)\n?([\s\S]*?)\`\`\`/g, '<pre style="background:var(--code-bg);padding:0.75rem;border-radius:6px;overflow-x:auto;margin:0.5rem 0;font-size:0.8rem"><code>$2</code></pre>');
+            f = f.replace(/\`([^\`]+)\`/g, '<code style="background:var(--code-bg);padding:0.15rem 0.4rem;border-radius:3px;font-size:0.82rem">$1</code>');
+            f = f.replace(/\*\*([^\*]+)\*\*/g, '<strong>$1</strong>');
+            return f;
+        }
+
+        // ===== UI Helpers =====
+        function handleKeyDown(e) {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
         }
 
         function autoResize(el) {
@@ -1007,8 +1152,8 @@
         }
 
         function scrollToBottom() {
-            const container = document.getElementById('chatContainer');
-            container.scrollTop = container.scrollHeight;
+            const c = document.getElementById('chatContainer');
+            c.scrollTop = c.scrollHeight;
         }
 
         function setMode(mode, btn) {
@@ -1026,31 +1171,9 @@
             document.getElementById('settingsPanel').classList.toggle('open');
         }
 
-        function updateSlider(key, value, displayId) {
-            settings[key] = parseFloat(value);
-            document.getElementById(displayId).textContent = value;
-            saveToStorage();
-        }
-
-        function updateSetting(key, value) {
-            settings[key] = value;
-            saveToStorage();
-        }
-
-        function toggleStream() {
-            settings.stream = !settings.stream;
-            document.getElementById('streamToggle').classList.toggle('active');
-            saveToStorage();
-        }
-
-        function toggleLearning() {
-            settings.adaptive_learning = !settings.adaptive_learning;
-            document.getElementById('learnToggle').classList.toggle('active');
-            saveToStorage();
-        }
-
-        function copyMessage(btn, text) {
-            navigator.clipboard.writeText(text.replace(/&#39;/g, "'")).then(() => {
+        function copyMsg(btn) {
+            const content = btn.closest('.msg').querySelector('.msg-content').textContent;
+            navigator.clipboard.writeText(content).then(() => {
                 btn.textContent = 'Copied!';
                 setTimeout(() => btn.textContent = 'Copy', 1500);
             });
@@ -1060,22 +1183,41 @@
             const conv = conversations[currentConvId];
             if (!conv) return;
             const text = conv.messages.map(m => `${m.role === 'user' ? 'You' : 'ALM'}: ${m.content}`).join('\n\n');
-            const blob = new Blob([text], { type: 'text/plain' });
             const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
+            a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
             a.download = `alm-chat-${conv.title.replace(/\s+/g, '-')}.txt`;
             a.click();
         }
 
         function escapeHtml(str) {
-            const div = document.createElement('div');
-            div.textContent = str;
-            return div.innerHTML;
+            const d = document.createElement('div');
+            d.textContent = str;
+            return d.innerHTML;
         }
 
-        function escapeAttr(str) {
-            return str.replace(/'/g, '&#39;').replace(/"/g, '&quot;').replace(/\n/g, '\\n');
+        // ===== Storage =====
+        function saveToStorage() {
+            try { localStorage.setItem('alm_conversations', JSON.stringify(conversations)); } catch(e) {}
         }
+
+        function loadFromStorage() {
+            try {
+                const c = localStorage.getItem('alm_conversations');
+                if (c) conversations = JSON.parse(c);
+            } catch(e) {}
+        }
+
+        // ===== Init =====
+        loadFromStorage();
+        if (Object.keys(conversations).length === 0) newConversation();
+        else {
+            const last = Object.values(conversations).sort((a, b) => b.updated - a.updated)[0];
+            if (last) switchConversation(last.id);
+        }
+        renderConvList();
+
+        // Start Pyodide loading
+        initPyodide();
     </script>
 </body>
 </html>
