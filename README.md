@@ -156,18 +156,6 @@ Open `web/index.html` in your browser for the chat UI with View Thoughts and Mod
 
 ---
 
-## Model Configurations
-
-ALM-1-Coder ships in three sizes:
-
-| Config | Parameters | Layers | Heads | Agent FFN Dim | Use Case |
-|--------|-----------|--------|-------|---------------|----------|
-| **small** | ~20M | 6 | 6 | 256 | Rapid prototyping, in-browser demo |
-| **medium** | ~150M | 12 | 12 | 512 | Development & fine-tuning |
-| **full** | ~1.3B | 24 | 16 | 1024 | Production-quality code generation |
-
----
-
 ## Architecture Deep Dive
 
 ### ALM-1: Mixture of Experts (MoE)
@@ -201,30 +189,16 @@ This allows the model to dynamically compose expertise — e.g., SYNTAX and ARCH
 ```
 ALM/
 ├── README.md                    ← You are here
-├── .github/
-│   └── workflows/
-│       ├── static.yml           ← GitHub Pages deployment
-│       └── train-coder.yml      ← Automated training workflow
-│
 ├── ALM-1/                       ← Original ALM model
 │   ├── model.py                 ← 7.8M MoE transformer
-│   ├── train.py                 ← Training script
 │   ├── app.py                   ← Flask web server
 │   ├── cli.py                   ← Terminal TUI
 │   ├── search_agent.py          ← RAG search agent
 │   ├── adaptive_learning.py     ← Online learning
-│   ├── web_original/            ← Static web interface + weights
-│   │   ├── index.html
-│   │   ├── inference.py
-│   │   ├── alm_weights.npz
-│   │   └── alm_config.json
-│   └── checkpoints/
+│   └── web_original/            ← Static web interface + weights
 │
 └── ALM-1-Coder/                 ← Coding specialist model
     ├── model.py                 ← MoA transformer with 10 agents
-    ├── train.py                 ← Role-conditioned training
-    ├── data/
-    │   └── train.py             ← Training data pipeline
     └── web/
         ├── index.html           ← Chat UI with View Thoughts + Model Selector
         └── inference.py         ← NumPy inference engine for Pyodide
