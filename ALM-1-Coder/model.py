@@ -343,6 +343,7 @@ class MixtureOfAgents(nn.Module):
         # Only compute experts belonging to top-k agent groups
         # Each agent has n_experts_per_agent experts: agent i owns experts [i*n_experts_per_agent, (i+1)*n_experts_per_agent)
         output = torch.zeros_like(x)
+        per_agent_outputs = []  # Store per-agent outputs for AgentTalk
 
         for k_idx in range(self.top_k_agents):
             agent_idx = top_k_indices[:, :, k_idx]  # [B, T]
@@ -373,6 +374,7 @@ class MixtureOfAgents(nn.Module):
 
             # Agent-conditioned output: expert output + agent identity signal
             agent_output = expert_output * (1.0 + 0.1 * agent_emb)
+            per_agent_outputs.append(agent_output)  # Save for AgentTalk
             output = output + agent_w * agent_output
 
         # Thought log for View Thoughts
@@ -380,9 +382,118 @@ class MixtureOfAgents(nn.Module):
             "agent_weights": agent_weights.detach(),
             "top_k_agents": top_k_indices.detach(),
             "top_k_weights": top_k_weights.detach(),
+            "agent_outputs": per_agent_outputs,  # Per-agent outputs for AgentTalk
         }
 
         return output, thought_log
+
+
+# ============================================================
+# AgentTalk: Inter-Agent Communication Layer
+# ============================================================
+
+class AgentTalkLayer(nn.Module):
+    """
+    AgentTalk Layer — Agents communicate with each other between layers.
+
+    After the MoA layer produces weighted agent outputs, this layer lets
+    active agents exchange information. Each agent can "speak" to other
+    active agents, and their messages are aggregated to refine the output.
+
+    This is what makes agents "talk and do stuff" — they do not just
+    independently produce outputs; they debate, refine, and collaborate.
+
+    Mechanism:
+    1. Each active agent produces a "message" vector from its output
+    2. Messages are broadcast to all other active agents
+    3. Each agent attends to incoming messages (scaled by agent weights)
+    4. The refined messages are added back to the output
+    """
+    def __init__(self, config):
+        super().__init__()
+        self.n_agents = config.n_agents
+        self.n_embd = config.n_embd
+
+        # Agent message projection: each agent creates a compact message
+        self.msg_proj = nn.Linear(config.n_embd, config.n_embd, bias=False)
+        # Agent listen projection: each agent processes incoming messages
+        self.listen_proj = nn.Linear(config.n_embd, config.n_embd, bias=False)
+        # Gate to control how much agent talk influences the output
+        self.talk_gate = nn.Linear(config.n_embd * 2, config.n_embd, bias=False)
+        # Per-agent talk strength (learned)
+        self.agent_talk_strength = nn.Embedding(self.n_agents, 1)
+
+    def forward(self, x, agent_outputs, agent_weights, top_k_indices):
+        """
+        Args:
+            x: Original input [B, T, C]
+            agent_outputs: Per-agent output tensors list of [B, T, C]
+            agent_weights: Agent routing weights [B, T, n_agents]
+            top_k_indices: Top-k agent indices [B, T, top_k]
+
+        Returns:
+            refined_output: [B, T, C] — output after agent communication
+            dialogue_log: list of agent dialogue info for View Thoughts
+        """
+        B, T, C = x.shape
+        top_k = top_k_indices.shape[-1]
+
+        # Each active agent creates its message
+        messages = []
+        for k_idx in range(top_k):
+            if k_idx < len(agent_outputs):
+                msg = torch.tanh(self.msg_proj(agent_outputs[k_idx]))  # [B, T, C]
+                messages.append(msg)
+            else:
+                messages.append(torch.zeros_like(x))
+
+        # Aggregate messages from other agents (excluding self)
+        refined = torch.zeros_like(x)
+        dialogue_log = []
+
+        for k_idx in range(top_k):
+            # Sum messages from all OTHER active agents
+            other_msgs = torch.zeros_like(x)
+            for j in range(top_k):
+                if j != k_idx:
+                    other_msgs = other_msgs + messages[j]
+
+            # Each agent "listens" to the aggregated other messages
+            listened = self.listen_proj(other_msgs)  # [B, T, C]
+
+            # Gated combination: how much should this agent be influenced?
+            gate_input = torch.cat([agent_outputs[k_idx] if k_idx < len(agent_outputs) else x, listened], dim=-1)
+            gate = torch.sigmoid(self.talk_gate(gate_input))  # [B, T, C]
+
+            # Agent-specific talk strength
+            agent_id = top_k_indices[0, -1, k_idx].item()  # for the last position
+            strength = torch.sigmoid(self.agent_talk_strength(
+                torch.tensor([agent_id], device=x.device)
+            )).item()
+
+            # Refined output for this agent
+            agent_refined = agent_outputs[k_idx] if k_idx < len(agent_outputs) else x
+            agent_refined = agent_refined + strength * gate * listened
+            refined = refined + agent_refined
+
+            # Log dialogue info
+            agent_name = list(AGENT_TOKENS.keys())[agent_id] if agent_id < len(AGENT_TOKENS) else f"Agent-{agent_id}"
+            other_names = []
+            for j in range(top_k):
+                if j != k_idx:
+                    other_id = top_k_indices[0, -1, j].item()
+                    other_name = list(AGENT_TOKENS.keys())[other_id] if other_id < len(AGENT_TOKENS) else f"Agent-{other_id}"
+                    other_names.append(other_name)
+
+            dialogue_log.append({
+                "agent": agent_name,
+                "agent_id": agent_id,
+                "talking_to": other_names,
+                "talk_strength": round(strength, 3),
+                "gate_strength": round(gate[0, -1].mean().item(), 3),
+            })
+
+        return refined, dialogue_log
 
 
 # ============================================================
@@ -390,20 +501,37 @@ class MixtureOfAgents(nn.Module):
 # ============================================================
 
 class CoderBlock(nn.Module):
-    """Transformer block with pre-norm, GQA, and MoA FFN."""
+    """Transformer block with pre-norm, GQA, MoA FFN, and AgentTalk."""
     def __init__(self, config):
         super().__init__()
         self.ln_1 = nn.LayerNorm(config.n_embd)
         self.attn = GroupedQueryAttention(config)
         self.ln_2 = nn.LayerNorm(config.n_embd)
         self.moa = MixtureOfAgents(config)
+        # AgentTalk layer for inter-agent communication
+        self.agent_talk = AgentTalkLayer(config)
 
     def forward(self, x, agent_hint=None):
         # Self-attention with residual
         x = x + self.attn(self.ln_1(x))
         # MoA FFN with residual
         moa_out, thought_log = self.moa(self.ln_2(x), agent_hint=agent_hint)
-        x = x + moa_out
+
+        # AgentTalk: agents communicate and refine their outputs
+        # Reconstruct per-agent outputs for talk layer
+        agent_outputs = thought_log.get("agent_outputs", [moa_out])
+        talk_out, dialogue_log = self.agent_talk(
+            self.ln_2(x),
+            agent_outputs,
+            thought_log["agent_weights"],
+            thought_log["top_k_agents"],
+        )
+
+        # Combine MoA output with agent-talk-refined output
+        x = x + moa_out + 0.1 * talk_out  # talk influence is small but meaningful
+
+        # Add dialogue to thought log
+        thought_log["dialogue"] = dialogue_log
         return x, thought_log
 
 
@@ -682,7 +810,11 @@ class ALMCoder(nn.Module):
     def load_checkpoint(cls, path, device='cpu'):
         """Load model from checkpoint."""
         checkpoint = torch.load(path, map_location=device, weights_only=False)
-        config = ALMCoderConfig(**checkpoint['config'])
+        # Filter out config keys that are derived/computed to avoid constructor errors
+        config_dict = checkpoint['config']
+        # Remove 'n_experts' since it's computed as n_agents * n_experts_per_agent
+        config_dict.pop('n_experts', None)
+        config = ALMCoderConfig(**config_dict)
         model = cls(config)
         model.load_state_dict(checkpoint['model_state_dict'])
         model.to(device)

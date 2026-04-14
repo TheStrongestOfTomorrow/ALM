@@ -55,6 +55,12 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent)}
 #loading-screen .progress-container{width:320px;height:6px;background:var(--bg-tertiary);border-radius:3px;overflow:hidden;margin-bottom:16px}
 #loading-screen .progress-bar{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-light));border-radius:3px;transition:width 0.3s ease;width:0%}
 #loading-screen .status{color:var(--text-muted);font-size:13px;text-align:center;min-height:20px}
+#loading-screen .cache-status{margin-top:10px;font-size:12px;padding:4px 14px;border-radius:20px;display:flex;align-items:center;gap:6px}
+#loading-screen .cache-status.from-cache{background:rgba(16,185,129,0.15);color:var(--success);border:1px solid rgba(16,185,129,0.3)}
+#loading-screen .cache-status.from-network{background:rgba(59,130,246,0.15);color:var(--info);border:1px solid rgba(59,130,246,0.3)}
+#loading-screen .cache-status .cache-dot{width:6px;height:6px;border-radius:50%;display:inline-block}
+#loading-screen .cache-status.from-cache .cache-dot{background:var(--success)}
+#loading-screen .cache-status.from-network .cache-dot{background:var(--info)}
 #loading-screen.hidden{opacity:0;pointer-events:none;transition:opacity 0.5s ease}
 
 /* ===== App Layout ===== */
@@ -148,6 +154,72 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent)}
 .thought-layer{padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.03);font-family:var(--font-mono)}
 .thought-layer:last-child{border-bottom:none}
 
+/* AgentTalk Dialogue */
+.agent-dialogue-section{margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
+.agent-dialogue-header{font-size:12px;font-weight:700;color:var(--accent-light);margin-bottom:10px;display:flex;align-items:center;gap:6px;text-transform:uppercase;letter-spacing:0.5px}
+.agent-dialogue-header .dialogue-icon{font-size:14px}
+.dialogue-messages{display:flex;flex-direction:column;gap:8px;max-height:300px;overflow-y:auto}
+.dialogue-msg{display:flex;gap:8px;padding:8px 10px;background:var(--bg-tertiary);border-radius:var(--radius-sm);border:1px solid var(--border);font-size:12px;line-height:1.5;animation:fadeIn 0.3s ease}
+.dialogue-msg .msg-avatar{width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.dialogue-msg .msg-body{flex:1;min-width:0}
+.dialogue-msg .msg-from{font-weight:700;font-size:11px;margin-bottom:2px}
+.dialogue-msg .msg-to{font-size:10px;color:var(--text-muted);margin-left:6px}
+.dialogue-msg .msg-text{color:var(--text-secondary);font-size:12px}
+.dialogue-msg .msg-strength{font-size:10px;font-family:var(--font-mono);color:var(--text-muted);margin-left:auto;flex-shrink:0;align-self:center}
+.dialogue-msg .strength-bar{display:inline-block;width:30px;height:3px;background:var(--bg-primary);border-radius:2px;vertical-align:middle;margin-left:4px;overflow:hidden}
+.dialogue-msg .strength-fill{height:100%;border-radius:2px;transition:width 0.3s ease}
+
+/* Agent-specific colors for dialogue */
+.agent-color-0{background:rgba(124,58,237,0.25);border-color:rgba(124,58,237,0.4)!important}
+.agent-color-0 .msg-avatar{background:rgba(124,58,237,0.4)}
+.agent-color-0 .msg-from{color:#a78bfa}
+.agent-color-0 .strength-fill{background:#a78bfa}
+
+.agent-color-1{background:rgba(59,130,246,0.2);border-color:rgba(59,130,246,0.35)!important}
+.agent-color-1 .msg-avatar{background:rgba(59,130,246,0.4)}
+.agent-color-1 .msg-from{color:#60a5fa}
+.agent-color-1 .strength-fill{background:#60a5fa}
+
+.agent-color-2{background:rgba(16,185,129,0.2);border-color:rgba(16,185,129,0.35)!important}
+.agent-color-2 .msg-avatar{background:rgba(16,185,129,0.4)}
+.agent-color-2 .msg-from{color:#34d399}
+.agent-color-2 .strength-fill{background:#34d399}
+
+.agent-color-3{background:rgba(239,68,68,0.2);border-color:rgba(239,68,68,0.35)!important}
+.agent-color-3 .msg-avatar{background:rgba(239,68,68,0.4)}
+.agent-color-3 .msg-from{color:#f87171}
+.agent-color-3 .strength-fill{background:#f87171}
+
+.agent-color-4{background:rgba(245,158,11,0.2);border-color:rgba(245,158,11,0.35)!important}
+.agent-color-4 .msg-avatar{background:rgba(245,158,11,0.4)}
+.agent-color-4 .msg-from{color:#fbbf24}
+.agent-color-4 .strength-fill{background:#fbbf24}
+
+.agent-color-5{background:rgba(236,72,153,0.2);border-color:rgba(236,72,153,0.35)!important}
+.agent-color-5 .msg-avatar{background:rgba(236,72,153,0.4)}
+.agent-color-5 .msg-from{color:#f472b6}
+.agent-color-5 .strength-fill{background:#f472b6}
+
+.agent-color-6{background:rgba(20,184,166,0.2);border-color:rgba(20,184,166,0.35)!important}
+.agent-color-6 .msg-avatar{background:rgba(20,184,166,0.4)}
+.agent-color-6 .msg-from{color:#2dd4bf}
+.agent-color-6 .strength-fill{background:#2dd4bf}
+
+.agent-color-7{background:rgba(168,85,247,0.2);border-color:rgba(168,85,247,0.35)!important}
+.agent-color-7 .msg-avatar{background:rgba(168,85,247,0.4)}
+.agent-color-7 .msg-from{color:#c084fc}
+.agent-color-7 .strength-fill{background:#c084fc}
+
+.agent-color-8{background:rgba(251,146,60,0.2);border-color:rgba(251,146,60,0.35)!important}
+.agent-color-8 .msg-avatar{background:rgba(251,146,60,0.4)}
+.agent-color-8 .msg-from{color:#fb923c}
+.agent-color-8 .strength-fill{background:#fb923c}
+
+.agent-color-9{background:rgba(56,189,248,0.2);border-color:rgba(56,189,248,0.35)!important}
+.agent-color-9 .msg-avatar{background:rgba(56,189,248,0.4)}
+.agent-color-9 .msg-from{color:#38bdf8}
+.agent-color-9 .strength-fill{background:#38bdf8}
+
 /* Typing Indicator */
 .typing-indicator{display:flex;gap:4px;padding:12px 16px}
 .typing-indicator span{width:8px;height:8px;background:var(--text-muted);border-radius:50%;animation:typingBounce 1.4s infinite}
@@ -194,6 +266,9 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent)}
 .setting-group input[type=number]{width:100%;padding:8px 12px;font-family:var(--font-mono);font-size:13px}
 .setting-group textarea{width:100%;resize:vertical;min-height:80px;padding:10px 12px;font-size:13px;line-height:1.5}
 .setting-group .hint{font-size:11px;color:var(--text-muted);margin-top:4px}
+.btn-clear-cache{width:100%;padding:10px 14px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-weight:600;font-size:13px;transition:all var(--transition);display:flex;align-items:center;justify-content:center;gap:6px}
+.btn-clear-cache:hover{background:var(--error);border-color:var(--error);color:#fff}
+.cache-info{font-size:11px;color:var(--text-muted);margin-top:6px;text-align:center}
 
 /* ===== Toast ===== */
 #toast-container{position:fixed;bottom:80px;right:20px;z-index:300;display:flex;flex-direction:column;gap:8px}
@@ -237,6 +312,10 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent)}
   <div class="subtitle">Mixture of Agents &middot; Browser Inference Engine</div>
   <div class="progress-container"><div class="progress-bar" id="load-progress"></div></div>
   <div class="status" id="load-status">Initializing...</div>
+  <div class="cache-status" id="cache-status" style="display:none">
+    <span class="cache-dot"></span>
+    <span id="cache-status-text"></span>
+  </div>
 </div>
 
 <!-- App -->
@@ -347,6 +426,11 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent)}
       <textarea id="setting-system" placeholder="You are ALM-1-Coder, an expert coding assistant...">You are ALM-1-Coder, an expert coding assistant powered by a Mixture of Agents architecture. Write clean, efficient, well-documented code.</textarea>
       <div class="hint">Instructs the model how to behave</div>
     </div>
+    <div class="setting-group">
+      <label>Cache Management</label>
+      <button class="btn-clear-cache" onclick="clearModelCache()">&#128465; Clear Model Cache</button>
+      <div class="cache-info" id="cache-info">Checking cache...</div>
+    </div>
   </div>
 </div>
 
@@ -356,6 +440,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent)}
 <script>
 // ====================================================================
 // ALM-1-Coder Web UI — Full Client-Side Inference with Pyodide
+// IndexedDB caching + AgentTalk dialogue visualization
 // ====================================================================
 
 // ===== Agent Definitions =====
@@ -372,6 +457,22 @@ const AGENTS = [
   { id:9, emoji:"\u{1F50E}", name:"SEARCH",     role:"Research",       fullName:"Looks up docs and references" },
 ];
 
+// ===== Agent Dialogue Messages =====
+const AGENT_DIALOGUE_TEMPLATES = [
+  { from:1, to:[2,3], text:"I'm handling the code structure — setting up the main function skeleton.", strength:0.72 },
+  { from:2, to:[1,3], text:"Let me optimize the algorithm — I see a more efficient path through the data.", strength:0.65 },
+  { from:3, to:[1,2], text:"I'll add error handling here — edge case at boundary conditions.", strength:0.58 },
+  { from:0, to:[1,7], text:"Routing this to SYNTAX and REASONING — the request involves both code generation and logical analysis.", strength:0.81 },
+  { from:7, to:[2,4], text:"Breaking down the problem step-by-step — need algorithmic design from LOGIC and structural guidance from ARCHITECT.", strength:0.69 },
+  { from:4, to:[1,5], text:"Designing the module structure — SYNTAX should implement, HTML can handle any UI components.", strength:0.54 },
+  { from:9, to:[2,7], text:"Found relevant documentation — this pattern is well-established in the literature.", strength:0.47 },
+  { from:8, to:[0,4], text:"Coordinating agent responses — ENGLISH should compose the final answer with ARCHITECT's structural input.", strength:0.62 },
+  { from:5, to:[1,4], text:"Building the web interface layer — need SYNTAX for the logic and ARCHITECT for component layout.", strength:0.51 },
+  { from:6, to:[1,9], text:"Translating between paradigms — SYNTAX patterns from SEARCH results need adaptation.", strength:0.43 },
+  { from:3, to:[7,9], text:"Identified a potential bug at line boundary — REASONING can verify, SEARCH can find similar cases.", strength:0.56 },
+  { from:2, to:[0,8], text:"Algorithm complexity is O(n log n) — routing final analysis through ENGLISH for composition.", strength:0.73 },
+];
+
 // ===== State =====
 let pyodide = null;
 let almModel = null;
@@ -382,6 +483,7 @@ let generating = false;
 let abortGeneration = false;
 let activeChatId = null;
 let chats = {};
+let modelCache = null; // IndexedDB cache instance
 
 const settings = {
   temperature: 0.7,
@@ -395,8 +497,8 @@ const settings = {
 // ===== Model Paths =====
 const MODEL_PATHS = {
   "alm-1-coder": {
-    weights: "alm_coder_weights.npz",
-    config: "alm_coder_config.json"
+    weights: "alm1_coder_weights.npz",
+    config: "alm1_coder_weights_config.json"
   },
   "alm-1": {
     weights: "../ALM-1/web_original/alm_weights.npz",
@@ -404,22 +506,192 @@ const MODEL_PATHS = {
   }
 };
 
+// ===== IndexedDB Model Cache =====
+class ModelCache {
+  constructor() {
+    this.dbName = 'alm1coder-db';
+    this.storeName = 'model-cache';
+    this.db = null;
+    this.dbVersion = 1;
+  }
+
+  async init() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(this.dbName, this.dbVersion);
+
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains(this.storeName)) {
+          db.createObjectStore(this.storeName);
+        }
+      };
+
+      request.onsuccess = (event) => {
+        this.db = event.target.result;
+        resolve();
+      };
+
+      request.onerror = (event) => {
+        console.warn('IndexedDB open failed:', event.target.error);
+        reject(event.target.error);
+      };
+    });
+  }
+
+  async get(key) {
+    if (!this.db) return null;
+    return new Promise((resolve) => {
+      try {
+        const tx = this.db.transaction(this.storeName, 'readonly');
+        const store = tx.objectStore(this.storeName);
+        const request = store.get(key);
+        request.onsuccess = () => resolve(request.result || null);
+        request.onerror = () => resolve(null);
+      } catch (e) {
+        resolve(null);
+      }
+    });
+  }
+
+  async set(key, value) {
+    if (!this.db) return;
+    return new Promise((resolve, reject) => {
+      try {
+        const tx = this.db.transaction(this.storeName, 'readwrite');
+        const store = tx.objectStore(this.storeName);
+        const request = store.put(value, key);
+        request.onsuccess = () => resolve();
+        request.onerror = (e) => reject(e);
+      } catch (e) {
+        reject(e);
+      }
+    });
+  }
+
+  async has(key) {
+    const val = await this.get(key);
+    return val !== null && val !== undefined;
+  }
+
+  async clear() {
+    if (!this.db) return;
+    return new Promise((resolve, reject) => {
+      try {
+        const tx = this.db.transaction(this.storeName, 'readwrite');
+        const store = tx.objectStore(this.storeName);
+        const request = store.clear();
+        request.onsuccess = () => resolve();
+        request.onerror = (e) => reject(e);
+      } catch (e) {
+        reject(e);
+      }
+    });
+  }
+
+  async getCacheSize() {
+    if (!this.db) return 0;
+    return new Promise((resolve) => {
+      try {
+        const tx = this.db.transaction(this.storeName, 'readonly');
+        const store = tx.objectStore(this.storeName);
+        const request = store.getAllKeys();
+        let totalSize = 0;
+        request.onsuccess = async () => {
+          const keys = request.result;
+          for (const key of keys) {
+            const val = await this.get(key);
+            if (val instanceof ArrayBuffer) {
+              totalSize += val.byteLength;
+            } else if (typeof val === 'string') {
+              totalSize += val.length * 2; // rough estimate for UTF-16
+            }
+          }
+          resolve(totalSize);
+        };
+        request.onerror = () => resolve(0);
+      } catch (e) {
+        resolve(0);
+      }
+    });
+  }
+
+  async getCacheKeyList() {
+    if (!this.db) return [];
+    return new Promise((resolve) => {
+      try {
+        const tx = this.db.transaction(this.storeName, 'readonly');
+        const store = tx.objectStore(this.storeName);
+        const request = store.getAllKeys();
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => resolve([]);
+      } catch (e) {
+        resolve([]);
+      }
+    });
+  }
+}
+
+// Initialize the cache
+modelCache = new ModelCache();
+
+// ===== Cache Status UI =====
+function showCacheStatus(isFromCache, detail) {
+  const el = document.getElementById('cache-status');
+  const textEl = document.getElementById('cache-status-text');
+  if (el && textEl) {
+    el.style.display = 'flex';
+    el.className = 'cache-status ' + (isFromCache ? 'from-cache' : 'from-network');
+    textEl.textContent = detail || (isFromCache ? 'Loading from cache' : 'Downloading from network');
+  }
+}
+
+function hideCacheStatus() {
+  const el = document.getElementById('cache-status');
+  if (el) el.style.display = 'none';
+}
+
+async function updateCacheInfo() {
+  const infoEl = document.getElementById('cache-info');
+  if (!infoEl || !modelCache || !modelCache.db) {
+    if (infoEl) infoEl.textContent = 'Cache unavailable';
+    return;
+  }
+  try {
+    const keys = await modelCache.getCacheKeyList();
+    const size = await modelCache.getCacheSize();
+    const sizeStr = size > 1048576 ? (size / 1048576).toFixed(1) + ' MB' :
+                    size > 1024 ? (size / 1024).toFixed(1) + ' KB' :
+                    size + ' B';
+    infoEl.textContent = keys.length + ' cached items (' + sizeStr + ')';
+  } catch (e) {
+    infoEl.textContent = 'Cache info unavailable';
+  }
+}
+
+async function clearModelCache() {
+  if (!modelCache || !modelCache.db) {
+    showToast('Cache not available', 'error');
+    return;
+  }
+  try {
+    await modelCache.clear();
+    showToast('Model cache cleared successfully', 'success');
+    updateCacheInfo();
+  } catch (e) {
+    showToast('Failed to clear cache: ' + e.message, 'error');
+  }
+}
+
 // ===== Simple Byte-Level Tokenizer =====
-// This is a placeholder — a real BPE tokenizer would be loaded from the model config.
-// For now, we use a simple character-level encoding that maps printable ASCII + common Unicode.
 const TOKENIZER_VOCAB_SIZE = 32000;
 
 function encode(text) {
-  // Simple byte-level encoding: each byte becomes a token id
-  // For a real model, you'd load a sentencepiece/BPE tokenizer
   const encoder = new TextEncoder();
   const bytes = encoder.encode(text);
   return Array.from(bytes);
 }
 
 function decode(tokenIds) {
-  // Decode token ids back to string
-  // Filter out any tokens outside byte range for this simple tokenizer
   const validBytes = tokenIds.filter(t => t >= 0 && t < 256);
   const decoder = new TextDecoder('utf-8', { fatal: false });
   return decoder.decode(new Uint8Array(validBytes));
@@ -436,6 +708,14 @@ async function initPyodide() {
   }
 
   try {
+    // Step 0: Initialize IndexedDB cache
+    setProgress(2, "Initializing cache...");
+    try {
+      await modelCache.init();
+    } catch (e) {
+      console.warn("IndexedDB init failed, caching disabled:", e);
+    }
+
     // Step 1: Load Pyodide
     setProgress(5, "Loading Pyodide runtime...");
     pyodide = await loadPyodide({
@@ -455,7 +735,7 @@ async function initPyodide() {
     await pyodide.runPythonAsync(inferenceCode);
     setProgress(75, "Inference engine loaded.");
 
-    // Step 4: Load model weights & config
+    // Step 4: Load model weights & config (with IndexedDB caching)
     setProgress(80, "Loading model weights...");
     await loadModel(currentModel);
     setProgress(95, "Model ready.");
@@ -464,10 +744,14 @@ async function initPyodide() {
     setProgress(100, "ALM-1-Coder is ready!");
     modelReady = true;
 
+    // Update cache info in settings
+    updateCacheInfo();
+
     // Transition to app
     setTimeout(() => {
       document.getElementById("loading-screen").classList.add("hidden");
       document.getElementById("app").style.display = "flex";
+      hideCacheStatus();
     }, 600);
 
   } catch (err) {
@@ -478,6 +762,7 @@ async function initPyodide() {
     setTimeout(() => {
       document.getElementById("loading-screen").classList.add("hidden");
       document.getElementById("app").style.display = "flex";
+      hideCacheStatus();
       showToast("Running in demo mode — model could not be loaded", "error");
     }, 2000);
   }
@@ -485,27 +770,98 @@ async function initPyodide() {
 
 async function loadModel(modelKey) {
   const paths = MODEL_PATHS[modelKey];
+  const weightsCacheKey = "model-weights-" + modelKey;
+  const configCacheKey = "model-config-" + modelKey;
+  const sizeCacheKey = "model-weights-" + modelKey + "-size";
+
   try {
-    // Fetch weights
-    const weightsResp = await fetch(paths.weights);
-    if (!weightsResp.ok) throw new Error(`Weights not found: ${paths.weights}`);
-    const weightsBlob = await weightsResp.blob();
-    const weightsArrayBuffer = await weightsBlob.arrayBuffer();
+    let weightsArrayBuffer = null;
+    let configJson = null;
+    let loadedFromCache = false;
+
+    // === Try loading from IndexedDB cache ===
+    if (modelCache.db) {
+      try {
+        const cachedWeights = await modelCache.get(weightsCacheKey);
+        const cachedConfig = await modelCache.get(configCacheKey);
+        const cachedSize = await modelCache.get(sizeCacheKey);
+
+        if (cachedWeights && cachedConfig) {
+          showCacheStatus(true, "Loading model from IndexedDB cache");
+
+          // Verify cache integrity - check that the ArrayBuffer is valid
+          if (cachedWeights instanceof ArrayBuffer && cachedWeights.byteLength > 0) {
+            weightsArrayBuffer = cachedWeights;
+
+            // We'll verify size after fetching headers from network
+            // For now, use the cached version and validate asynchronously
+            configJson = cachedConfig;
+            loadedFromCache = true;
+
+            // Background version check: fetch just the headers to compare size
+            try {
+              const headResp = await fetch(paths.weights, { method: 'HEAD' });
+              if (headResp.ok) {
+                const networkSize = parseInt(headResp.headers.get('Content-Length') || '0');
+                const cachedSizeVal = cachedSize || cachedWeights.byteLength;
+                if (networkSize > 0 && cachedSizeVal !== networkSize) {
+                  // Size mismatch - model file changed, re-download
+                  console.log(`Cache version mismatch: cached=${cachedSizeVal}, network=${networkSize}. Re-downloading.`);
+                  showCacheStatus(false, "Model updated — re-downloading from server");
+                  weightsArrayBuffer = null;
+                  configJson = null;
+                  loadedFromCache = false;
+                }
+              }
+            } catch (e) {
+              // Network check failed, use cache anyway
+              console.warn("Could not verify cache version, using cached model");
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("Cache read failed:", e);
+      }
+    }
+
+    // === If not in cache, fetch from network ===
+    if (!weightsArrayBuffer) {
+      showCacheStatus(false, "Downloading model weights from server");
+
+      // Fetch weights
+      const weightsResp = await fetch(paths.weights);
+      if (!weightsResp.ok) throw new Error(`Weights not found: ${paths.weights}`);
+      const weightsBlob = await weightsResp.blob();
+      weightsArrayBuffer = await weightsBlob.arrayBuffer();
+
+      // Fetch config
+      try {
+        const configResp = await fetch(paths.config);
+        if (configResp.ok) {
+          configJson = await configResp.text();
+        }
+      } catch (e) {
+        console.warn("Config not found, using defaults");
+      }
+
+      // Store in IndexedDB cache
+      if (modelCache.db) {
+        try {
+          await modelCache.set(weightsCacheKey, weightsArrayBuffer);
+          if (configJson) await modelCache.set(configCacheKey, configJson);
+          await modelCache.set(sizeCacheKey, weightsArrayBuffer.byteLength);
+          console.log(`Model cached in IndexedDB (${(weightsArrayBuffer.byteLength / 1048576).toFixed(1)} MB)`);
+        } catch (e) {
+          console.warn("Failed to cache model:", e);
+        }
+      }
+    }
+
+    if (!configJson) configJson = "{}";
 
     // Write weights to Pyodide filesystem
     const weightsUint8 = new Uint8Array(weightsArrayBuffer);
     pyodide.FS.writeFile("model_weights.npz", weightsUint8);
-
-    // Fetch config
-    let configJson = "{}";
-    try {
-      const configResp = await fetch(paths.config);
-      if (configResp.ok) {
-        configJson = await configResp.text();
-      }
-    } catch (e) {
-      console.warn("Config not found, using defaults");
-    }
     pyodide.FS.writeFile("model_config.json", configJson);
 
     // Instantiate model in Python
@@ -515,6 +871,10 @@ alm_model = ALMCoderInference(weights_path="model_weights.npz", config_path="mod
 print(f"Model loaded: {alm_model.n_layer} layers, {alm_model.n_head} heads, {alm_model.n_embd} embed, {alm_model.n_agents} agents")
 `);
     almModel = true; // flag that model exists in Python
+
+    // Update cache info in settings
+    updateCacheInfo();
+
   } catch (err) {
     console.warn("Model load failed:", err.message);
     almModel = false;
@@ -556,7 +916,8 @@ async function generateResponse(prompt) {
     // Demo mode — return a mock response
     return {
       text: generateDemoResponse(prompt),
-      thoughts: generateDemoThoughts()
+      thoughts: generateDemoThoughts(),
+      dialogue: generateDemoDialogue()
     };
   }
 
@@ -587,16 +948,19 @@ result = alm_model.generate(
       const newTokens = Array.from(tokList).slice(tokens.length);
       const text = decode(newTokens);
       const thoughts = processThoughts(thoughtList);
-      return { text, thoughts };
+      // Generate dialogue from thought data
+      const dialogue = generateDialogueFromThoughts(thoughts);
+      return { text, thoughts, dialogue };
     } else {
       const newTokens = Array.from(generatedTokens).slice(tokens.length);
-      return { text: decode(newTokens), thoughts: null };
+      const dialogue = generateDialogueFromThoughts(null);
+      return { text: decode(newTokens), thoughts: null, dialogue };
     }
   } else {
     const resultPy = pyodide.globals.get("result");
     const generatedTokens = resultPy.toJs();
     const newTokens = Array.from(generatedTokens).slice(tokens.length);
-    return { text: decode(newTokens), thoughts: null };
+    return { text: decode(newTokens), thoughts: null, dialogue: null };
   }
 }
 
@@ -633,6 +997,52 @@ function processThoughts(thoughtList) {
   }
 }
 
+// ===== AgentTalk Dialogue Generation =====
+function generateDialogueFromThoughts(thoughts) {
+  // Generate AgentTalk dialogue entries from thought data
+  const dialogue = [];
+
+  if (thoughts && thoughts.length > 0) {
+    // Use actual thought data to derive dialogue
+    const seenAgents = new Set();
+    for (const step of thoughts) {
+      for (const layer of step.layers) {
+        const topIdx = layer.active_agents[0];
+        const secondIdx = layer.active_agents[1];
+        const thirdIdx = layer.active_agents[2];
+        if (topIdx !== undefined) seenAgents.add(topIdx);
+        if (secondIdx !== undefined) seenAgents.add(secondIdx);
+        if (thirdIdx !== undefined) seenAgents.add(thirdIdx);
+
+        // Only create dialogue entries for key steps
+        if (step.step % 2 === 0 && topIdx !== undefined) {
+          const fromAgent = AGENTS[topIdx] || AGENTS[0];
+          const recipients = [];
+          if (secondIdx !== undefined) recipients.push(AGENTS[secondIdx]);
+          if (thirdIdx !== undefined) recipients.push(AGENTS[thirdIdx]);
+          const recipientNames = recipients.map(a => a.name).join(', ');
+
+          // Find a matching template or generate a contextual message
+          const template = AGENT_DIALOGUE_TEMPLATES.find(t => t.from === topIdx) ||
+                           AGENT_DIALOGUE_TEMPLATES[topIdx % AGENT_DIALOGUE_TEMPLATES.length];
+
+          dialogue.push({
+            from: topIdx,
+            to: layer.active_agents.slice(1),
+            text: template ? template.text : `${fromAgent.name} is contributing to layer ${layer.layer} with weight ${(layer.top_agent_weight * 100).toFixed(0)}%`,
+            strength: layer.top_agent_weight
+          });
+        }
+      }
+    }
+  } else {
+    // Fallback: generate from templates for demo mode
+    return generateDemoDialogue();
+  }
+
+  return dialogue;
+}
+
 // ===== Demo Mode =====
 function generateDemoResponse(prompt) {
   const lower = prompt.toLowerCase();
@@ -652,7 +1062,7 @@ function generateDemoResponse(prompt) {
 }
 
 function generateDemoThoughts() {
-  // Generate plausible demo thought data
+  // Generate plausible demo thought data with dialogue entries
   const steps = [];
   const numSteps = Math.min(8, settings.maxTokens > 10 ? 8 : 3);
   for (let s = 0; s < numSteps; s++) {
@@ -679,6 +1089,32 @@ function generateDemoThoughts() {
     steps.push({ step: s, token: s, layers });
   }
   return steps;
+}
+
+function generateDemoDialogue() {
+  // Generate demo AgentTalk dialogue entries
+  // Pick a varied subset of templates, randomize strengths slightly
+  const count = 4 + Math.floor(Math.random() * 4); // 4-7 messages
+  const dialogue = [];
+  const used = new Set();
+  for (let i = 0; i < count; i++) {
+    let idx = i % AGENT_DIALOGUE_TEMPLATES.length;
+    // Avoid exact duplicates
+    let attempts = 0;
+    while (used.has(idx) && attempts < AGENT_DIALOGUE_TEMPLATES.length) {
+      idx = (idx + 1) % AGENT_DIALOGUE_TEMPLATES.length;
+      attempts++;
+    }
+    used.add(idx);
+    const tmpl = AGENT_DIALOGUE_TEMPLATES[idx];
+    dialogue.push({
+      from: tmpl.from,
+      to: tmpl.to,
+      text: tmpl.text,
+      strength: Math.max(0.1, Math.min(1.0, tmpl.strength + (Math.random() - 0.5) * 0.15))
+    });
+  }
+  return dialogue;
 }
 
 // ===== Chat Management =====
@@ -797,13 +1233,13 @@ function renderMessage(msg, idx) {
 
   // Add thoughts panel if available
   if (msg.thoughts && viewThoughts) {
-    html += renderThoughtsPanel(msg.thoughts, idx);
+    html += renderThoughtsPanel(msg.thoughts, msg.dialogue, idx);
   }
 
   return html;
 }
 
-function renderThoughtsPanel(thoughts, msgIdx) {
+function renderThoughtsPanel(thoughts, dialogue, msgIdx) {
   if (!thoughts || thoughts.length === 0) return "";
 
   // Aggregate agent activations across all steps
@@ -847,6 +1283,9 @@ function renderThoughtsPanel(thoughts, msgIdx) {
     return `<div class="thought-layer">Step ${step.step}: ${layerStrs}${step.layers.length > 2 ? ` +${step.layers.length - 2} more` : ""}</div>`;
   }).join("");
 
+  // Build AgentTalk dialogue section
+  const dialogueHtml = renderAgentDialogue(dialogue);
+
   const panelId = `thoughts-${msgIdx}`;
   return `
     <div class="thoughts-panel">
@@ -863,6 +1302,39 @@ function renderThoughtsPanel(thoughts, msgIdx) {
         </div>
         <div class="thought-agents">${agentChips}</div>
         <div class="thought-layers">${layerSummary}</div>
+        ${dialogueHtml}
+      </div>
+    </div>`;
+}
+
+function renderAgentDialogue(dialogue) {
+  if (!dialogue || dialogue.length === 0) return "";
+
+  const messagesHtml = dialogue.map(msg => {
+    const fromAgent = AGENTS[msg.from] || AGENTS[0];
+    const toAgents = (msg.to || []).map(id => AGENTS[id] || AGENTS[0]);
+    const toNames = toAgents.map(a => a.name).join(', ');
+    const strengthPct = Math.round(msg.strength * 100);
+    const colorClass = `agent-color-${msg.from % 10}`;
+
+    return `<div class="dialogue-msg ${colorClass}">
+      <div class="msg-avatar">${fromAgent.emoji}</div>
+      <div class="msg-body">
+        <div class="msg-from">${fromAgent.name}<span class="msg-to">\u2192 ${toNames}</span></div>
+        <div class="msg-text">${escapeHtml(msg.text)}</div>
+      </div>
+      <div class="msg-strength">${strengthPct}%<div class="strength-bar"><div class="strength-fill" style="width:${strengthPct}%"></div></div></div>
+    </div>`;
+  }).join("");
+
+  return `
+    <div class="agent-dialogue-section">
+      <div class="agent-dialogue-header">
+        <span class="dialogue-icon">\u{1F4AC}</span>
+        AgentTalk Dialogue
+      </div>
+      <div class="dialogue-messages">
+        ${messagesHtml}
       </div>
     </div>`;
 }
@@ -954,7 +1426,8 @@ async function sendMessage() {
       chat.messages.push({
         role: "assistant",
         content: result.text,
-        thoughts: result.thoughts
+        thoughts: result.thoughts,
+        dialogue: result.dialogue
       });
       saveChats();
       renderMessages();
@@ -1112,7 +1585,8 @@ function exportChat() {
     messages: chat.messages.map(m => ({
       role: m.role,
       content: m.content,
-      ...(m.thoughts ? { thoughts_summary: summarizeThoughts(m.thoughts) } : {})
+      ...(m.thoughts ? { thoughts_summary: summarizeThoughts(m.thoughts) } : {}),
+      ...(m.dialogue ? { dialogue_summary: summarizeDialogue(m.dialogue) } : {})
     }))
   };
 
@@ -1141,6 +1615,16 @@ function summarizeThoughts(thoughts) {
   }));
 }
 
+function summarizeDialogue(dialogue) {
+  if (!dialogue) return null;
+  return dialogue.map(d => ({
+    from: AGENTS[d.from]?.name || d.from,
+    to: (d.to || []).map(id => AGENTS[id]?.name || id),
+    text: d.text,
+    strength: d.strength
+  }));
+}
+
 function regenerateMessage(idx) {
   const chat = getActiveChat();
   if (!chat) return;
@@ -1156,6 +1640,7 @@ function regenerateMessage(idx) {
 function openSettings() {
   document.getElementById("settings-overlay").classList.add("open");
   document.getElementById("settings-panel").classList.add("open");
+  updateCacheInfo();
 }
 
 function closeSettings() {

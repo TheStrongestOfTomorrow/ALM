@@ -18,6 +18,10 @@ Weight layout (PyTorch naming convention):
   h.{i}.moa.experts.{e}.w1.weight                     (ffn_dim, n_embd)
   h.{i}.moa.experts.{e}.w2.weight                     (n_embd, ffn_dim)
   h.{i}.moa.experts.{e}.w3.weight                     (ffn_dim, n_embd)
+  h.{i}.agent_talk.msg_proj.weight                    (n_embd, n_embd)
+  h.{i}.agent_talk.listen_proj.weight                 (n_embd, n_embd)
+  h.{i}.agent_talk.talk_gate.weight                   (n_embd, n_embd * 2)
+  h.{i}.agent_talk.agent_talk_strength.weight         (n_agents, 1)
   ln_f.weight / .bias                                 (n_embd,)
 """
 
@@ -121,6 +125,10 @@ class ALMCoderInference:
 
     Designed to run inside Pyodide (browser) with no PyTorch dependency.
     Weights are loaded from a single .npz file and config from a JSON file.
+
+    Supports the AgentTalk layer for inter-agent communication.
+    If AgentTalk weights are not present in the .npz file, the layer is
+    skipped gracefully (backward compatibility with old weight files).
     """
 
     # Default config values — overridden by whatever is in config_path
@@ -210,6 +218,20 @@ class ALMCoderInference:
     def _wt(self, key):
         """Retrieve a weight tensor by dotted key name."""
         return self.w[key]
+
+    def _has_weights(self, keys):
+        """Check whether all specified weight keys exist in the loaded weights.
+
+        Used for optional layers like AgentTalk to gracefully skip when
+        weights are absent (backward compatibility with old .npz files).
+
+        Args:
+            keys: iterable of weight key strings
+
+        Returns:
+            True if every key is present in self.w, False otherwise.
+        """
+        return all(k in self.w for k in keys)
 
     # -----------------------------------------------------------------------
     # Single-layer forward passes
@@ -311,7 +333,11 @@ class ALMCoderInference:
             thought_log: optional list to append routing diagnostics
 
         Returns:
-            (seq_len, n_embd)
+            tuple of:
+                moa_out:            (seq_len, n_embd) — weighted agent output
+                per_agent_outputs:  list of (seq_len, n_embd) per top-k slot
+                active_agent_indices: list of int — agent index for each slot
+                                      (at the last position)
         """
         i = layer_idx
         seq_len, n_embd = x.shape
@@ -323,14 +349,19 @@ class ALMCoderInference:
 
         # Top-k agent selection: keep only top_k_agents, zero out the rest
         top_k = self.top_k_agents
+
+        # Sort agent probabilities to identify top-k
+        sorted_idx = np.argsort(-agent_probs, axis=-1)  # (seq_len, n_agents)
+
         if top_k < self.n_agents:
-            sorted_idx = np.argsort(-agent_probs, axis=-1)
             mask = np.zeros_like(agent_probs, dtype=bool)
             for pos in range(seq_len):
                 mask[pos, sorted_idx[pos, :top_k]] = True
             agent_probs = agent_probs * mask
             # Re-normalize
             agent_probs = agent_probs / (np.sum(agent_probs, axis=-1, keepdims=True) + 1e-9)
+            # Recompute sorted_idx after re-normalization
+            sorted_idx = np.argsort(-agent_probs, axis=-1)
 
         # --- Expert gating ---
         expert_gate_w = self._wt(f"h.{i}.moa.expert_gate.weight")  # (n_experts, n_embd)
@@ -352,36 +383,39 @@ class ALMCoderInference:
             expert_stack * expert_weights[:, :, np.newaxis], axis=1
         )
 
-        # --- Agent role modulation ---
-        # For each top-k agent:
-        #   agent_output = expert_combined * (1.0 + 0.1 * agent_role_embedding[agent_idx])
-        #   moa_out += agent_weight * agent_output
+        # --- Agent role modulation with per-slot output collection ---
         role_emb = self._wt(f"h.{i}.moa.agent_role_embeddings.weight")  # (n_agents, n_embd)
 
         moa_out = np.zeros_like(x)  # (seq_len, n_embd)
 
-        # Identify the top-k agents per position
-        # For efficiency, we iterate over the (small) set of top-k agents
+        # Collect per-agent outputs (one per top-k slot) for AgentTalk
+        per_agent_outputs = [np.zeros_like(x) for _ in range(top_k)]
+        # Agent index for each slot at the last position (used for logging / talk strength)
+        active_agent_indices = []
+
         if top_k < self.n_agents:
-            sorted_idx = np.argsort(-agent_probs, axis=-1)  # (seq_len, n_agents)
-            # We process each position; for short sequences this is fine
-            for pos in range(seq_len):
-                for k_idx in range(top_k):
+            # Sparse: iterate by slot, then by position
+            for k_idx in range(top_k):
+                for pos in range(seq_len):
                     agent_idx = int(sorted_idx[pos, k_idx])
                     agent_weight = agent_probs[pos, agent_idx]  # scalar
                     agent_emb = role_emb[agent_idx]  # (n_embd,)
-                    # agent_output = expert_output * (1.0 + 0.1 * agent_emb)
                     agent_output = expert_combined[pos] * (1.0 + 0.1 * agent_emb)
+                    per_agent_outputs[k_idx][pos] = agent_output
                     moa_out[pos] += agent_weight * agent_output
+                # Track the agent index for the last position in this slot
+                active_agent_indices.append(int(sorted_idx[-1, k_idx]))
         else:
-            # All agents are active — vectorized
+            # All agents active — vectorized
             for agent_idx in range(self.n_agents):
                 agent_weight = agent_probs[:, agent_idx]  # (seq_len,)
                 agent_emb = role_emb[agent_idx]  # (n_embd,)
                 # (seq_len, n_embd) * (1.0 + 0.1 * (n_embd,)) -> (seq_len, n_embd)
                 agent_output = expert_combined * (1.0 + 0.1 * agent_emb)
+                per_agent_outputs[agent_idx] = agent_output
                 # (seq_len,) -> (seq_len, 1) for broadcasting
                 moa_out += agent_weight[:, np.newaxis] * agent_output
+            active_agent_indices = list(range(self.n_agents))
 
         # --- Thought logging ---
         if thought_log is not None:
@@ -401,10 +435,146 @@ class ALMCoderInference:
                 "top_agent_weight": float(last_agent_probs[active_agents[0]]),
             })
 
-        return moa_out
+        return moa_out, per_agent_outputs, active_agent_indices
+
+    # -----------------------------------------------------------------------
+    # AgentTalk: Inter-Agent Communication Layer
+    # -----------------------------------------------------------------------
+
+    def _agent_talk(self, x, agent_outputs, active_agent_indices, layer_idx,
+                    thought_log=None):
+        """AgentTalk — inter-agent communication layer (pure NumPy).
+
+        After the MoA layer produces per-agent outputs, this layer lets
+        active agents exchange information. Each agent "speaks" a message,
+        and the messages from other agents are aggregated, projected, and
+        gated before being added back to refine each agent's output.
+
+        Mirrors the PyTorch AgentTalkLayer exactly:
+        1. Each active agent produces a "message" vector via msg_proj + tanh
+        2. Messages from OTHER agents are aggregated and processed via
+           listen_proj
+        3. A gated combination controls how much agent talk influences
+           output: talk_gate(concat[agent_output, listened])
+        4. Per-agent talk strength is learned: agent_talk_strength[agent_id]
+        5. Each agent's refined output =
+               agent_output + strength * sigmoid(talk_gate) * listen_proj(other_msgs)
+        6. The total refined output is the sum across all active agents.
+
+        If AgentTalk weights are not present in the .npz file, the layer
+        returns zeros (graceful backward compatibility).
+
+        Args:
+            x:                    (seq_len, n_embd) — original MoA input
+            agent_outputs:        list of (seq_len, n_embd) per top-k slot
+            active_agent_indices: list of int — agent index for each slot
+                                  (corresponding to the last position)
+            layer_idx:            integer layer index
+            thought_log:          optional list to append dialogue diagnostics
+
+        Returns:
+            talk_out: (seq_len, n_embd) — agent-talk-refined output.
+                      Zeros if AgentTalk weights are absent.
+        """
+        i = layer_idx
+
+        # --- Backward compatibility: skip if weights don't exist ---
+        required_keys = [
+            f"h.{i}.agent_talk.msg_proj.weight",
+            f"h.{i}.agent_talk.listen_proj.weight",
+            f"h.{i}.agent_talk.talk_gate.weight",
+            f"h.{i}.agent_talk.agent_talk_strength.weight",
+        ]
+        if not self._has_weights(required_keys):
+            return np.zeros_like(x)
+
+        # Guard: nothing to talk about if no agents are active
+        if not agent_outputs or not active_agent_indices:
+            return np.zeros_like(x)
+
+        # --- Load weights ---
+        msg_proj_w = self._wt(f"h.{i}.agent_talk.msg_proj.weight")           # (n_embd, n_embd)
+        listen_proj_w = self._wt(f"h.{i}.agent_talk.listen_proj.weight")     # (n_embd, n_embd)
+        talk_gate_w = self._wt(f"h.{i}.agent_talk.talk_gate.weight")         # (n_embd, n_embd*2)
+        strength_w = self._wt(f"h.{i}.agent_talk.agent_talk_strength.weight")  # (n_agents, 1)
+
+        top_k = len(agent_outputs)
+        seq_len, n_embd = x.shape
+
+        # --- Step 1: Each active agent creates its message ---
+        messages = []
+        for k_idx in range(top_k):
+            msg = np.tanh(linear(agent_outputs[k_idx], msg_proj_w))  # (seq_len, n_embd)
+            messages.append(msg)
+
+        # --- Step 2: Aggregate other agents' messages and refine ---
+        refined = np.zeros_like(x)
+        dialogue_log = []
+
+        for k_idx in range(top_k):
+            # Sum messages from all OTHER active agents
+            other_msgs = np.zeros_like(x)
+            for j in range(top_k):
+                if j != k_idx:
+                    other_msgs = other_msgs + messages[j]
+
+            # Each agent "listens" to the aggregated other messages
+            listened = linear(other_msgs, listen_proj_w)  # (seq_len, n_embd)
+
+            # Gated combination: how much should this agent be influenced?
+            gate_input = np.concatenate(
+                [agent_outputs[k_idx], listened], axis=-1
+            )  # (seq_len, n_embd * 2)
+            gate = sigmoid(linear(gate_input, talk_gate_w))  # (seq_len, n_embd)
+
+            # Agent-specific talk strength (sigmoid-scaled)
+            agent_id = active_agent_indices[k_idx]
+            strength = float(sigmoid(strength_w[agent_id, 0]))
+
+            # Refined output for this agent:
+            #   agent_refined = agent_output + strength * gate * listened
+            agent_refined = agent_outputs[k_idx] + strength * gate * listened
+            refined = refined + agent_refined
+
+            # --- Dialogue logging ---
+            if thought_log is not None:
+                agent_name = (
+                    AGENT_NAMES[agent_id]
+                    if agent_id < len(AGENT_NAMES)
+                    else f"Agent-{agent_id}"
+                )
+                other_names = []
+                for j in range(top_k):
+                    if j != k_idx:
+                        other_id = active_agent_indices[j]
+                        other_name = (
+                            AGENT_NAMES[other_id]
+                            if other_id < len(AGENT_NAMES)
+                            else f"Agent-{other_id}"
+                        )
+                        other_names.append(other_name)
+
+                gate_strength = float(np.mean(gate[-1]))  # mean over embd at last pos
+                dialogue_log.append({
+                    "agent": agent_name,
+                    "agent_id": agent_id,
+                    "talking_to": other_names,
+                    "talk_strength": round(strength, 3),
+                    "gate_strength": round(gate_strength, 3),
+                })
+
+        # --- Append dialogue to thought log ---
+        if thought_log is not None and dialogue_log:
+            thought_log.append({
+                "layer": i,
+                "type": "agent_talk",
+                "dialogue": dialogue_log,
+            })
+
+        return refined
 
     def _transformer_block(self, x, layer_idx, thought_log=None):
-        """Single transformer block: LN -> Attn -> residual -> LN -> MoA -> residual."""
+        """Single transformer block: LN -> Attn -> residual -> LN -> MoA -> AgentTalk -> residual."""
         i = layer_idx
 
         # Pre-norm attention
@@ -418,8 +588,17 @@ class ALMCoderInference:
         ln2_w = self._wt(f"h.{i}.ln_2.weight")
         ln2_b = self._wt(f"h.{i}.ln_2.bias")
         x_norm = layer_norm(x, ln2_w, ln2_b)
-        moa_out = self._moa_layer(x_norm, i, thought_log)
-        x = x + moa_out
+        moa_out, agent_outputs, active_indices = self._moa_layer(
+            x_norm, i, thought_log
+        )
+
+        # AgentTalk: agents communicate and refine their outputs
+        talk_out = self._agent_talk(
+            x_norm, agent_outputs, active_indices, i, thought_log
+        )
+
+        # Residual connection: MoA + scaled AgentTalk (matching PyTorch model)
+        x = x + moa_out + 0.1 * talk_out
 
         return x
 
@@ -608,14 +787,16 @@ class ALMCoderInference:
     # -----------------------------------------------------------------------
 
     def view_thoughts(self, thought_logs, agent_names=None):
-        """Produce a human-readable summary of MoA routing during generation.
+        """Produce a human-readable summary of MoA routing and AgentTalk
+        dialogue during generation.
 
         Args:
             thought_logs: list of dicts returned by generate(return_thoughts=True)
             agent_names: optional list of agent name strings
 
         Returns:
-            A formatted string summarising each step.
+            A formatted string summarising each step, including agent
+            dialogue from the AgentTalk layer when present.
         """
         if agent_names is None:
             agent_names = AGENT_NAMES[:self.n_agents]
@@ -634,6 +815,20 @@ class ALMCoderInference:
             layers = entry["layers"]
             lines.append(f"\n--- Step {step}  |  token={tok} ---")
             for l_entry in layers:
+                # --- AgentTalk dialogue entries ---
+                if l_entry.get("type") == "agent_talk":
+                    li = l_entry["layer"]
+                    for d in l_entry.get("dialogue", []):
+                        talking_to = ", ".join(d["talking_to"]) if d["talking_to"] else "(nobody)"
+                        lines.append(
+                            f"  Layer {li:2d} TALK: "
+                            f"{d['agent']} -> {talking_to}  "
+                            f"strength={d['talk_strength']:.3f}  "
+                            f"gate={d['gate_strength']:.3f}"
+                        )
+                    continue
+
+                # --- MoA routing entries ---
                 li = l_entry["layer"]
                 active = l_entry["active_agents"]
                 top_a = l_entry["top_agent"]

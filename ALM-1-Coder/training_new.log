@@ -1,0 +1,17 @@
+ALM-1-Coder initialized: 6,915,112 parameters
+Active params per token: ~4,010,764 (MoA sparsity)
+Loaded 181 training examples
+Prepared 181 tokenised examples
+Resumed from epoch 2, loss 6.1338
+
+============================================================
+  ALM-1-Coder Training
+  Device      : cpu
+  Epochs      : 30
+  Vocab size  : 8006
+  Block size  : 256
+  Parameters  : 6,915,112
+  Special toks: 16
+  Agents      : 10
+============================================================
+

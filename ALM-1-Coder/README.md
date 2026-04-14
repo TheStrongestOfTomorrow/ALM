@@ -1,70 +1,49 @@
-# ALM-1-Coder - Mixture of Agents Coding Model
+# ALM-1-Coder — Mixture of Agents Coding Model
 
-ALM-1-Coder is a Mixture of Agents (MoA) language model purpose-built for code generation. Rather than relying on a single monolithic network, it routes tokens through **10 specialized agent sub-networks**, each an expert in a distinct aspect of programming. A learned gating mechanism selects which agents contribute to each token, producing ensemble-quality output at a fraction of the cost.
+ALM-1-Coder is a Mixture of Agents (MoA) language model purpose-built for code generation. Rather than relying on a single monolithic network, it routes tokens through **10 named, role-defined agent sub-networks**, each with a personality, a job title, and dedicated parameters. A learned gating mechanism selects which agents contribute to each token, producing ensemble-quality output at a fraction of the cost.
 
 ---
 
 ## The 10 Agents & Their Roles
 
-| # | Agent | Role |
-|---|-------|------|
-| 1 | **Planner** | Decomposes high-level prompts into sub-tasks and outlines solution structure |
-| 2 | **Architect** | Designs module boundaries, interfaces, and data-flow patterns |
-| 3 | **Writer** | Generates clean, idiomatic code following language conventions |
-| 4 | **Reviewer** | Audits generated code for correctness, style, and anti-patterns |
-| 5 | **Debugger** | Inserts defensive checks, error handling, and diagnostic logging |
-| 6 | **Optimizer** | Applies performance-aware transformations (vectorization, caching, lazy eval) |
-| 7 | **Tester** | Produces unit tests, edge-case inputs, and property-based checks |
-| 8 | **Documenter** | Generates docstrings, inline comments, and usage examples |
-| 9 | **Refactorer** | Simplifies control flow, removes duplication, enforces DRY/SOLID |
-| 10 | **Integrator** | Manages imports, dependency wiring, and cross-module compatibility |
+| # | Agent | Business Role | Personality | What It Does |
+|---|-------|---------------|-------------|--------------|
+| 1 | **ENGLISH** | CEO | Authoritative, decisive, slightly annoyed | Comprehends prompts, routes to agents, composes temporary agents |
+| 2 | **SYNTAX** | Senior Developer | Pragmatic, ships fast, hates over-engineering | Writes clean, idiomatic code |
+| 3 | **LOGIC** | Algorithms Engineer | Perfectionist, pedantic, loves algorithms | Optimizes algorithms, reasons about correctness |
+| 4 | **DEBUGGER** | QA Engineer | Suspicious, thorough, loves finding mistakes | Finds bugs, inserts error handling, defensive checks |
+| 5 | **ARCHITECT** | Systems Architect | Abstract thinker, "let us zoom out", never codes | Designs module boundaries, interfaces, data flow |
+| 6 | **HTML** | Frontend Developer | Dramatic, passionate, defensive about CSS | Builds web UIs, HTML/CSS/JS |
+| 7 | **TRANSLATOR** | Localization Engineer | Chill, neutral, no opinions, just converts | Converts between programming languages |
+| 8 | **REASONING** | Chief Strategy Officer | Over-analytical, cautious, "well actually..." | Chain-of-thought reasoning, step-by-step analysis |
+| 9 | **THOUGHT** | Project Manager | Diplomatic, peacemaker, exhausted | Coordinates agent-to-agent dialogue |
+| 10 | **SEARCH** | Research Analyst | Helpful, always has a reference, "according to docs..." | Looks up documentation and references |
 
----
+### Dynamic Agent Composition
 
-## Training
+When no single agent fits a task, the ENGLISH agent creates a **temporary new agent** by blending existing ones:
 
-### GitHub Actions (recommended)
+```
+Prompt: "Optimize this recursive function and add error handling"
 
-1. Go to **Actions → Train & Deploy ALM-1-Coder** in your repository.
-2. Click **Run workflow**.
-3. Set `train_model` to **true** and click **Run workflow**.
-4. The workflow will train for 100 epochs, then upload checkpoints and numpy weights as artifacts.
-
-### Google Colab
-
-Open the notebook in Colab, mount your drive, and run the training cells. Ensure you have `torch` and `tiktoken` installed:
-
-```bash
-pip install torch tiktoken
+ENGLISH composes: 40% LOGIC + 40% DEBUGGER + 20% SYNTAX
+→ Temporary agent handles the novel combination
 ```
 
-Then run:
-
-```bash
-python train.py --epochs 100
-```
-
----
-
-## Use in Browser (Pyodide)
-
-ALM-1-Coder ships a fully client-side web interface powered by **Pyodide** — no server required.
-
-1. Open the deployed GitHub Pages URL (or serve `web/index.html` locally).
-2. The model weights (numpy format) are fetched and loaded in-browser via Pyodide.
-3. Type your prompt and press **Generate** — inference runs entirely in your browser.
+This means the model is not limited to 10 fixed agents — it can theoretically create unlimited agent combinations.
 
 ---
 
 ## View Thoughts
 
-The **View Thoughts** feature exposes the internal reasoning of the model. When enabled, the gating activations for each token are visualized alongside the output, showing:
+The **View Thoughts** feature exposes the internal reasoning of the model. When enabled, you can watch the agents collaborate (and argue) in real-time:
 
-- Which agents were activated for each token.
-- The confidence weight each agent contributed.
-- A step-by-step trace of how the Planner, Writer, and Reviewer collaborated.
+- Which agents were activated for each token
+- The confidence weight each agent contributed
+- Agent dialogue: watch SYNTAX and ARCHITECT disagree about abstraction levels, see DEBUGGER catch edge cases LOGIC missed
+- A step-by-step trace of how agents collaborated across layers
 
-This makes ALM-1-Coder uniquely interpretable — you can *see* the model think.
+This makes ALM-1-Coder uniquely interpretable — you can *see* the model think, and it is both entertaining and useful.
 
 ---
 
@@ -76,17 +55,31 @@ This makes ALM-1-Coder uniquely interpretable — you can *see* the model think.
 | **SwiGLU** | Gated linear activation (SiLU + GLU) for richer feature representation in feed-forward layers |
 | **GQA** (Grouped-Query Attention) | Shares key/value heads across query groups, reducing KV-cache overhead without sacrificing quality |
 | **MoA** (Mixture of Agents) | Routes each token through a subset of the 10 agent FFNs via a learned top-k gate, blending expert outputs |
+| **Agent Role Embeddings** | Each agent has a learned identity vector that modulates expert outputs |
+| **AgentTalk** | Agents communicate with each other between layers, debating and refining the output |
 
 ### How MoA Works
 
 For each token representation **x**:
 
-1. The gating network computes scores `g(x) = softmax(W_g · x)`.
-2. The top-k agents are selected.
-3. Each selected agent `i` produces an output `FFN_i(x)`.
-4. The final output is the weighted sum: `Σ (g_i · FFN_i(x))`.
+1. The agent gate computes scores: `g(x) = softmax(W_g · x)`
+2. Top-k agents are selected (default k=3)
+3. Each selected agent produces output through its expert FFNs
+4. Agent role embeddings inject identity signals: `agent_output = expert_output * (1 + 0.1 * role_emb)`
+5. The final output is the weighted sum across active agents
 
-This allows the model to dynamically compose expertise — e.g., the Planner and Writer may dominate on scaffolding, while the Optimizer and Debugger activate on performance-critical loops.
+This allows the model to dynamically compose expertise — e.g., SYNTAX and ARCHITECT may dominate on scaffolding, while LOGIC and DEBUGGER activate on performance-critical loops.
+
+---
+
+## Use in Browser (Pyodide + IndexedDB)
+
+ALM-1-Coder ships a fully client-side web interface powered by **Pyodide** — no server required. Model weights and the Pyodide runtime are **cached in IndexedDB** so you only download them once:
+
+1. Open the deployed GitHub Pages URL (or serve `web/index.html` locally)
+2. On first visit, model weights and packages are downloaded and stored in IndexedDB
+3. On subsequent visits, everything loads instantly from IndexedDB — no re-downloading
+4. Type your prompt and press **Generate** — inference runs entirely in your browser
 
 ---
 
@@ -94,13 +87,11 @@ This allows the model to dynamically compose expertise — e.g., the Planner and
 
 ALM-1-Coder ships in three sizes to balance speed and quality:
 
-| Config | Parameters | Layers | Heads | Agent FFN Dim | Use Case |
-|--------|-----------|--------|-------|---------------|----------|
-| **small** | ~14 M | 6 | 6 | 256 | Rapid prototyping, in-browser demo |
-| **medium** | ~85 M | 12 | 12 | 512 | Development & fine-tuning |
-| **full** | ~350 M | 24 | 16 | 1024 | Production-quality code generation |
-
-Set the desired configuration in `config.py` before training, or pass `--config small|medium|full` to `train.py`.
+| Config | Parameters | Layers | Heads | Embedding Dim | Agent FFN Dim | Use Case |
+|--------|-----------|--------|-------|---------------|---------------|----------|
+| **small** | ~10M | 4 | 8 | 128 | 352 | Rapid prototyping, in-browser demo |
+| **medium** | ~150M | 16 | 12 | 512 | 1408 | Development & fine-tuning |
+| **full** | ~1.3B | 24 | 16 | 2048 | 5632 | Production-quality code generation |
 
 ---
 

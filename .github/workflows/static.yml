@@ -1,19 +1,15 @@
-# ALM Training and Deployment Pipeline
-name: ALM Pipeline
+name: Deploy ALM to GitHub Pages
 
 on:
   push:
-    branches: ["*"]
+    branches: ["main"]
+    paths:
+      - 'ALM-1-Coder/web/**'
+      - 'ALM-1/web_original/**'
   workflow_dispatch:
-    inputs:
-      train_model:
-        description: 'Train the model'
-        required: false
-        default: 'false'
-        type: boolean
 
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
 
@@ -22,34 +18,6 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Train the model (only when triggered manually with train_model=true)
-  train:
-    if: ${{ github.event.inputs.train_model == 'true' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install dependencies
-        run: |
-          pip install torch --index-url https://download.pytorch.org/whl/cpu
-          pip install tiktoken
-
-      - name: Train ALM
-        run: python train.py
-
-      - name: Upload checkpoint
-        uses: actions/upload-artifact@v4
-        with:
-          name: alm-checkpoint
-          path: checkpoints/alm_tiny_best.pt
-
-  # Deploy web interface to GitHub Pages
   deploy:
     environment:
       name: github-pages
@@ -65,7 +33,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './web'
+          path: './ALM-1-Coder/web/'
 
       - name: Deploy to GitHub Pages
         id: deployment
