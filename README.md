@@ -121,71 +121,38 @@ It's both **entertaining** (watch SYNTAX and ARCHITECT disagree about abstractio
 
 ## Quick Start
 
-### ALM-1 (Original)
+### Try in Your Browser
+
+The easiest way to use ALM — just visit the GitHub Pages deployment. Both models run entirely in your browser via Pyodide. No installation, no server, no API keys.
+
+1. Go to the **GitHub Pages** link
+2. Select your model: **ALM-1-Coder** (code specialist) or **ALM-1** (general)
+3. Start chatting!
+
+Toggle **View Thoughts** to watch the agents collaborate in real-time.
+
+### Run Locally
+
+#### ALM-1 (Original)
 
 ```bash
-cd ALM-1
+git clone https://github.com/TheStrongestOfTomorrow/ALM.git
+cd ALM/ALM-1
 pip install torch flask tiktoken rich
 python app.py
 ```
 
 This launches a local Flask server with a professional chat interface including conversations sidebar, settings panel, search (RAG) mode, and adaptive learning.
 
-### ALM-1-Coder
+#### ALM-1-Coder (Code Specialist)
 
 ```bash
-cd ALM-1-Coder
+git clone https://github.com/TheStrongestOfTomorrow/ALM.git
+cd ALM/ALM-1-Coder
 pip install torch tiktoken
-python train.py --epochs 100
 ```
 
-Or use it in your browser — just open the GitHub Pages deployment. Inference runs entirely client-side via Pyodide.
-
----
-
-## Training
-
-### Option 1: GitHub Actions (Easiest)
-
-1. Fork this repository
-2. Go to **Actions → Train & Deploy ALM-1-Coder**
-3. Click **Run workflow**
-4. Set `train_model` to **true** and click **Run workflow**
-5. The workflow trains the model and uploads checkpoints + NumPy weights as artifacts
-
-### Option 2: Google Colab (Recommended for larger configs)
-
-1. Open a new Colab notebook
-2. Set runtime to **T4 GPU + Python 3**
-3. Run the automated pipeline:
-
-```python
-from google.colab import userdata
-GITHUB_PAT = userdata.get('GITHUB_PAT')  # Add your PAT in Colab Secrets
-
-!git clone https://{GITHUB_PAT}@github.com/YOUR_USERNAME/ALM.git /content/ALM
-%cd /content/ALM/ALM-1-Coder
-
-!pip install torch tiktoken
-
-!python train.py --epochs 100
-
-# Push trained weights back to GitHub
-!git config --global user.email "alm-trainer@bot.dev"
-!git config --global user.name "ALM Training Bot"
-!git add -A
-!git commit -m "ALM-1-Coder trained - $(date +%Y-%m-%d_%H-%M)"
-!git push https://{GITHUB_PAT}@github.com/YOUR_USERNAME/ALM.git main
-```
-
-### Option 3: Local Training
-
-```bash
-cd ALM-1-Coder
-pip install torch tiktoken
-python train.py --epochs 100           # Small config (~20M, CPU OK)
-python train.py --epochs 50 --device cuda  # Medium/Full config (needs GPU)
-```
+Open `web/index.html` in your browser for the chat UI with View Thoughts and Model Selector.
 
 ---
 
