@@ -154,7 +154,7 @@ class ALMCoderInference:
 
         # Derived dimensions
         self.head_dim = self.n_embd // self.n_head
-        self.n_experts = self.n_experts_per_agent  # shorthand
+        self.n_experts = self.n_experts_per_agent * self.n_agents  # total experts
 
         # Load weights (lazy .npz — access keys on demand)
         try:

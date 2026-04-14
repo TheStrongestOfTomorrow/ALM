@@ -39,6 +39,7 @@ from model import (
     get_coder_small_config,
     ALL_SPECIAL_TOKENS,
     AGENT_TOKENS,
+    ASSISTANT_TOKEN,
 )
 from data.train import get_training_data
 

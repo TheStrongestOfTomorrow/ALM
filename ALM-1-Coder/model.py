@@ -69,6 +69,7 @@ AGENT_ROLES = {
 }
 
 # Special tokens
+ASSISTANT_TOKEN = "<|assistant|>"
 END_TOKEN = "<|end|>"
 THOUGHT_START = "<|think|>"
 THOUGHT_END = "<|/think|>"
@@ -76,7 +77,7 @@ COMPOSE_START = "<|compose|>"
 COMPOSE_END = "<|/compose|>"
 
 ALL_SPECIAL_TOKENS = list(AGENT_TOKENS.values()) + [
-    END_TOKEN, THOUGHT_START, THOUGHT_END, COMPOSE_START, COMPOSE_END
+    ASSISTANT_TOKEN, END_TOKEN, THOUGHT_START, THOUGHT_END, COMPOSE_START, COMPOSE_END
 ]
 
 
@@ -118,11 +119,11 @@ class ALMCoderConfig:
 
 
 def get_coder_small_config():
-    """ALM-1-Coder Small: ~20M params, trains on CPU in 1-2 hours."""
+    """ALM-1-Coder Small: ~10M params, trains on CPU in ~30 min."""
     return ALMCoderConfig(
-        vocab_size=8000, n_layer=8, n_head=8, n_embd=256,
-        block_size=512, n_agents=5, n_experts_per_agent=2,
-        top_k_agents=2, n_kv_heads=4, ffn_dim=704, dropout=0.1
+        vocab_size=8000, n_layer=4, n_head=8, n_embd=128,
+        block_size=256, n_agents=10, n_experts_per_agent=1,
+        top_k_agents=3, n_kv_heads=4, ffn_dim=352, dropout=0.1
     )
 
 
@@ -305,6 +306,9 @@ class MixtureOfAgents(nn.Module):
         """
         Forward pass with agent-conditioned routing.
 
+        Uses sparse computation: only selected experts are evaluated,
+        making MoA actually efficient instead of computing all experts.
+
         Args:
             x: Input tensor [B, T, C]
             agent_hint: Optional agent index hint [B, T] for forced routing
@@ -335,29 +339,37 @@ class MixtureOfAgents(nn.Module):
         # Renormalize top-k weights
         top_k_weights = top_k_weights / (top_k_weights.sum(dim=-1, keepdim=True) + 1e-6)
 
-        # Compute expert routing within agent groups
-        expert_logits = self.expert_gate(x)  # [B, T, n_experts]
-        expert_weights = F.softmax(expert_logits, dim=-1)  # [B, T, n_experts]
-
-        # Compute all expert outputs
-        all_expert_outputs = torch.stack([expert(x) for expert in self.experts], dim=-1)
-        # [B, T, C, n_experts]
-
-        # Weighted sum of expert outputs
-        expert_output = (all_expert_outputs * expert_weights.unsqueeze(-2)).sum(dim=-1)
-        # [B, T, C]
-
-        # Now apply agent gating: weight the expert output by agent routing
-        # This is the MoA magic - agent routing modulates the FFN output
+        # --- Sparse Expert Computation ---
+        # Only compute experts belonging to top-k agent groups
+        # Each agent has n_experts_per_agent experts: agent i owns experts [i*n_experts_per_agent, (i+1)*n_experts_per_agent)
         output = torch.zeros_like(x)
 
-        # For each top-k agent, add its weighted contribution
         for k_idx in range(self.top_k_agents):
             agent_idx = top_k_indices[:, :, k_idx]  # [B, T]
             agent_w = top_k_weights[:, :, k_idx:k_idx+1]  # [B, T, 1]
 
             # Add agent role embedding influence
             agent_emb = self.agent_role_embeddings(agent_idx)  # [B, T, C]
+
+            # Compute only the experts for this agent group
+            agent_id = top_k_indices[0, -1, k_idx].item()  # primary agent for this position
+            expert_start = agent_id * self.n_experts_per_agent
+            expert_end = expert_start + self.n_experts_per_agent
+
+            # Compute expert outputs for this agent group only (sparse!)
+            expert_outputs = []
+            for e_idx in range(expert_start, expert_end):
+                expert_outputs.append(self.experts[e_idx](x))
+            expert_stack = torch.stack(expert_outputs, dim=-1)  # [B, T, C, n_experts_per_agent]
+
+            # Expert gating: only for this agent's experts
+            expert_logits = self.expert_gate(x[:, :, :])  # [B, T, n_experts]
+            # Extract only the columns for this agent's experts
+            agent_expert_logits = expert_logits[:, :, expert_start:expert_end]
+            agent_expert_weights = F.softmax(agent_expert_logits, dim=-1)  # [B, T, n_experts_per_agent]
+
+            # Weighted sum of this agent's expert outputs
+            expert_output = (expert_stack * agent_expert_weights.unsqueeze(-2)).sum(dim=-1)  # [B, T, C]
 
             # Agent-conditioned output: expert output + agent identity signal
             agent_output = expert_output * (1.0 + 0.1 * agent_emb)
@@ -437,10 +449,12 @@ class ALMCoder(nn.Module):
         self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
         self.wte.weight = self.lm_head.weight  # Weight tying
 
-        # Agent token ID mapping
+        # Agent token ID mapping - these are indices into the special token range
+        # Special tokens are appended after the regular vocab, so:
+        # agent tokens occupy positions [0, 10) in ALL_SPECIAL_TOKENS list
         self.agent_token_ids = {}
         for i, (name, token) in enumerate(AGENT_TOKENS.items()):
-            self.agent_token_ids[name] = len(ALL_SPECIAL_TOKENS) - n_special + i
+            self.agent_token_ids[name] = i  # agent index 0-9
 
         # Initialize weights
         self.apply(self._init_weights)
