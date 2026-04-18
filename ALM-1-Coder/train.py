@@ -136,12 +136,13 @@ def decode_tokens(token_ids: list[int], tokenizer) -> str:
 # Data Preparation
 # ============================================================
 
-def prepare_example(example, tokenizer, block_size):
+def prepare_example(example, tokenizer, block_size, n_agents=5):
     """
     Turn a raw training example into (input_ids, target_ids, agent_hint).
 
     *agent_hint* is derived from the first agent token found in the text
-    (e.g. ``<|syntax|>`` → index 1).
+    (e.g. ``<|syntax|>`` → index 1).  Clamped to [0, n_agents-1] so that
+    it stays within the model's agent_gate dimension.
     """
     # Accept both plain strings and dicts with a "text" key
     text = example if isinstance(example, str) else example.get("text", str(example))
@@ -152,6 +153,9 @@ def prepare_example(example, tokenizer, block_size):
         if text.startswith(token_str):
             agent_hint = idx
             break
+
+    # Clamp to valid agent range for the model config
+    agent_hint = min(agent_hint, n_agents - 1)
 
     # Encode (request block_size+1 so we can split into input/target)
     token_ids = encode_text(text, tokenizer, block_size + 1)
@@ -237,7 +241,7 @@ def train(config, epochs, checkpoint_dir, resume=False, device="cpu"):
 
     examples = []
     for ex in training_data:
-        prepared = prepare_example(ex, tokenizer, block_size)
+        prepared = prepare_example(ex, tokenizer, block_size, n_agents=config.n_agents)
         if prepared is not None:
             examples.append(prepared)
     print(f"Prepared {len(examples)} tokenised examples")

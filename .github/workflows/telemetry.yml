@@ -1,0 +1,49 @@
+name: 📡 Telemetry Receiver
+
+on:
+  repository_dispatch:
+    types: [telemetry_receive]
+
+permissions:
+  contents: write
+
+jobs:
+  store-telemetry:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: telemetry-data
+
+      - name: Store telemetry data
+        env:
+          BATCH: ${{ github.event.client_payload.batch }}
+          COUNT: ${{ github.event.client_payload.count }}
+        run: |
+          # Decode the base64-encoded telemetry batch
+          echo "$BATCH" | base64 -d > telemetry_batch.json
+
+          # Create date-based directory
+          DATE=$(date -u '+%Y-%m-%d')
+          mkdir -p "telemetry/$DATE"
+
+          # Move batch to appropriate location
+          TIMESTAMP=$(date -u '+%H%M%S')
+          mv telemetry_batch.json "telemetry/$DATE/batch_${TIMESTAMP}.json"
+
+          # Configure git
+          git config user.name "ALM Telemetry Bot"
+          git config user.email "alm-telemetry[bot]@users.noreply.github.com"
+
+          # Commit and push
+          git add telemetry/
+          git commit -m "📡 Telemetry: ${COUNT} interactions - ${DATE}" || echo "No changes"
+          git push origin telemetry-data || {
+            # Branch might not exist yet
+            git checkout --orphan telemetry-data
+            git rm -rf . 2>/dev/null || true
+            git add telemetry/
+            git commit -m "📡 Telemetry: initial data - ${DATE}"
+            git push origin telemetry-data
+          }

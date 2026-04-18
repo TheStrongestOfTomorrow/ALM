@@ -1,0 +1,15 @@
+{
+  "vocab_size": 8005,
+  "n_layer": 6,
+  "n_head": 4,
+  "n_embd": 160,
+  "block_size": 128,
+  "n_agents": 4,
+  "n_experts_per_agent": 1,
+  "top_k_agents": 2,
+  "n_kv_heads": 2,
+  "ffn_dim": 448,
+  "dropout": 0.0,
+  "rope_theta": 10000.0,
+  "n_experts": 4
+}
